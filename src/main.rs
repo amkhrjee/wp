@@ -14,7 +14,7 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Hurricane_Irene_(2005)".to_string();
     // What I have to do:
     // - parse the name out of it
     // - parse the language out of it (future)
@@ -23,11 +23,6 @@ fn main() {
     let title = path_buf.file_name().unwrap().to_str().unwrap();
 
     let url = format!("https://en.wikipedia.org/w/api.php?action=query&format=json&prop=revisions&titles={title}&formatversion=2&rvprop=content&rvslots=*");
-
-    // These are all I need for now
-    // What I have to do:
-    // - Make it take up the full screen of the terminal
-    // - Make a parser for the content
 
     let (title, content) = get_content(url).unwrap();
     let content_len = content.len();
@@ -46,23 +41,23 @@ fn get_content(url: String) -> Result<(String, String), reqwest::Error> {
 
     Ok((title, content))
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum FormatType {
-    URL,
-    Code,
+    // URL,
+    // Code,
     Bold,  //done
     Title, //done
     PlainSentence,
     Subtitle,    //done
     Subsubtitle, //done
-    WikiLink,
-    Citation,
-    YearSpan,
-    CodeSnippet,
-    PostNominal,
-    BlockQuote,
-    BulletPoint,      //done
-    ShortDescription, //done
+    // WikiLink,
+    // Citation,
+    // YearSpan,
+    // CodeSnippet,
+    // PostNominal,
+    // BlockQuote,
+    InlineQuote,
+    BulletPoint, //done
 }
 
 struct Token {
@@ -86,6 +81,8 @@ impl Token {
         source[self.start..self.start + self.length]
             .iter()
             .collect::<String>()
+            .trim()
+            .to_string()
     }
 }
 
@@ -140,7 +137,7 @@ fn parse_content(title: &str, content: &String) {
                     length: current - start,
                     format_type: FormatType::Title,
                 });
-                current += 3;
+                current += 2;
             }
         } else if matches_pattern(&source, &"'''".to_string(), &mut current) {
             start = current;
@@ -152,12 +149,18 @@ fn parse_content(title: &str, content: &String) {
                 length: current - start,
                 format_type: FormatType::Bold,
             });
-            current += 2;
-        } else if matches_pattern(&source, &"<ref".to_string(), &mut current) {
-            while matches_pattern(&source, &"/ref>".to_string(), &mut current) {
+            current += 3;
+        } else if matches_pattern(&source, &"<ref ".to_string(), &mut current) {
+            // println!("Caught a reference!!!!");
+            // println!("Current Char: {}", source[current]);
+            while !matches!(source[current], '<' | '/') {
                 advance(&mut current);
             }
-            advance(&mut current);
+            if source[current] == '/' {
+                current += 2;
+            } else {
+                current += 6;
+            }
         } else if matches_pattern(&source, &"{{".to_string(), &mut current) {
             while source[current] != '}' {
                 advance(&mut current);
@@ -186,28 +189,50 @@ fn parse_content(title: &str, content: &String) {
                 format_type: FormatType::BulletPoint,
             });
             current -= 1;
-        } else if matches_pattern(&source, &"\\n".to_string(), &mut current) {
-            if source[current] == '\\' {
+        } else if matches!(source[current], '\\') {
+            advance(&mut current);
+            if matches!(source[current], 'n') {
+                advance(&mut current);
+                if source[current] == '\\' {
+                    current += 2;
+                }
+            } else if matches!(source[current], '"') {
+                start = current;
+                while !matches!(source[current], '\\') {
+                    advance(&mut current);
+                }
+                tokens.push(Token {
+                    start,
+                    length: current - start,
+                    format_type: FormatType::InlineQuote,
+                });
                 current += 2;
             }
+        } else if matches!(source[current], ' ') {
+            advance(&mut current);
         } else {
             start = current;
-            while !matches!(source[current], '.' | '\0' | '<' | '{') {
-                advance(&mut current);
+            while !matches!(source[current], '.' | '\0' | '<' | ',') {
+                if !matches!(source[current], '.' | '<' | ',') {
+                    advance(&mut current);
+                }
             }
             tokens.push(Token {
                 start,
                 length: current - start,
                 format_type: FormatType::PlainSentence,
             });
+
             advance(&mut current);
         }
     }
 
-    // for token in &tokens {
-    //     token.print(&source);
-    // }
-    display(&source, title, &tokens);
+    for token in &tokens {
+        // if token.format_type == FormatType::Title {
+        token.print(&source);
+        // }
+    }
+    // display(&source, title, &tokens);
 }
 
 fn matches_pattern(source: &[char], pattern: &String, current: &mut usize) -> bool {
@@ -230,6 +255,7 @@ fn advance(current: &mut usize) {
 
 fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
     let mut stdout = stdout();
+    let mut row = 2;
     let (width, _height) = size().unwrap();
     execute!(stdout, EnterAlternateScreen).unwrap();
 
@@ -246,34 +272,35 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
     )
     .unwrap();
 
-    // for token in tokens {
-    //     match token.format_type {
-    //         // FormatType::URL => todo!(),
-    //         // FormatType::Code => todo!(),
-    //         // FormatType::Bold => todo!(),
-    //         FormatType::Title => {
-    //             queue!(
-    //                 stdout,
-    //                 SetForegroundColor(Color::Blue),
-    //                 cursor::MoveTo(1, 2)
-    //             )
-    //             .unwrap();
-    //             stdout.write(token.to_string(source).as_bytes()).unwrap();
-    //         } // FormatType::PlainSentence => todo!(),
-    //         // FormatType::Subtitle => todo!(),
-    //         // FormatType::Subsubtitle => todo!(),
-    //         // FormatType::WikiLink => todo!(),
-    //         // FormatType::Citation => todo!(),
-    //         // FormatType::YearSpan => todo!(),
-    //         // FormatType::CodeSnippet => todo!(),
-    //         // FormatType::PostNominal => todo!(),
-    //         // FormatType::BlockQuote => todo!(),
-    //         // FormatType::BulletPoint => todo!(),
-    //         // FormatType::ShortDescription => todo!(),
-    //         _ => {}
-    //     }
-    // }
-    execute!(stdout, LeaveAlternateScreen).unwrap();
+    for token in tokens {
+        match token.format_type {
+            // FormatType::URL => todo!(),
+            // FormatType::Code => todo!(),
+            // FormatType::Bold => todo!(),
+            FormatType::Title => {
+                queue!(
+                    stdout,
+                    SetForegroundColor(Color::Blue),
+                    cursor::MoveTo(1, row)
+                )
+                .unwrap();
+                stdout.write(token.to_string(source).as_bytes()).unwrap();
+                row += 1;
+            } // FormatType::PlainSentence => todo!(),
+            // FormatType::Subtitle => todo!(),
+            // FormatType::Subsubtitle => todo!(),
+            // FormatType::WikiLink => todo!(),
+            // FormatType::Citation => todo!(),
+            // FormatType::YearSpan => todo!(),
+            // FormatType::CodeSnippet => todo!(),
+            // FormatType::PostNominal => todo!(),
+            // FormatType::BlockQuote => todo!(),
+            // FormatType::BulletPoint => todo!(),
+            // FormatType::ShortDescription => todo!(),
+            _ => {}
+        }
+    }
     stdout.flush().unwrap();
     thread::sleep(Duration::from_secs(5));
+    execute!(stdout, LeaveAlternateScreen).unwrap();
 }
