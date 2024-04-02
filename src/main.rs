@@ -4,10 +4,9 @@ use crossterm::terminal::{size, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, execute, queue};
 use std::env::current_dir;
 use std::io::{stdout, Write};
-use std::path::PathBuf;
 use std::time::Duration;
+use std::{env, path::PathBuf};
 use std::{thread, vec};
-// use std::{env, path::PathBuf};
 
 fn main() {
     // let args: Vec<_> = env::args().collect();
@@ -17,7 +16,7 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    let test_link = "https://en.wikipedia.org/wiki/Component_Object_Model".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
     // What I have to do:
     // - parse the name out of it
     // - parse the language out of it (future)
@@ -75,15 +74,18 @@ fn get_content(url: String) -> Result<(String, String), reqwest::Error> {
 enum FormatType {
     URL,
     Code,
-    Bold, //done
-    Plain,
-    Title,    //done
+    Bold,  //done
+    Title, //done
+    PlainSentence,
     Subtitle, //done
+    Subsubtitle,
     WikiLink, //done
     Citation, //done
     YearSpan,
     CodeSnippet,
     PostNominal,
+    BlockQuote,
+    BulletPoint,
     ShortDescription, //done
 }
 
@@ -133,99 +135,35 @@ fn parse_content(content: &String) {
         length: current - start,
         format_type: FormatType::ShortDescription,
     });
-    // Main Content
-    // - always starts with '''
 
-    // let mut parse_main_content = |current: &mut usize| {
-    //     while !is_at_end(&current) {
-    //         // Bold Text
-    //         if check_keyword("'''".to_string(), &current) {
-    //             *current += 3 + 1;
-    //             start = *current;
-    //             while source[*current] != '\'' {
-    //                 *current += 1;
-    //             }
-    //             tokens.push(Token {
-    //                 start,
-    //                 length: *current - start,
-    //                 format_type: FormatType::Bold,
-    //             });
-    //             *current += 2;
-    //         }
-    //         // WikiLink
-    //         else if check_keyword("[[".to_string(), &current) {
-    //             *current += 2 + 1;
-    //             start = *current;
-    //             while source[*current] != ']' {
-    //                 *current += 1;
-    //             }
-    //             tokens.push(Token {
-    //                 start,
-    //                 length: *current - start,
-    //                 format_type: FormatType::WikiLink,
-    //             });
-    //         }
-    //         // Citations
-    //         else if check_keyword("<ref".to_string(), &current) {
-    //             if check_keyword("http".to_string(), &current) {
-    //                 *current += 1;
-    //                 start = *current;
-    //                 while source[*current] != ' ' {
-    //                     *current += 1;
-    //                 }
-    //                 tokens.push(Token {
-    //                     start,
-    //                     length: *current - start,
-    //                     format_type: FormatType::Citation,
-    //                 })
-    //             }
-    //             *current += 1;
-    //         }
-    //         // Title & Subtitle
-    //         else if check_keyword("==".to_string(), &current) {
-    //             *current += 3;
-    //             if source[*current] == '=' {
-    //                 // Subtitle
-    //                 *current += 1;
-    //                 start = *current;
-    //                 while source[*current] != '=' {
-    //                     *current += 1;
-    //                 }
-    //                 tokens.push(Token {
-    //                     start,
-    //                     length: *current - start,
-    //                     format_type: FormatType::Subtitle,
-    //                 })
-    //             }
-    //             // Title
-    //             start = *current;
-    //             while source[*current] != '=' {
-    //                 *current += 1;
-    //             }
-    //             tokens.push(Token {
-    //                 start,
-    //                 length: *current - start,
-    //                 format_type: FormatType::Title,
-    //             })
-    //         }
-    //         *current += 1;
-    //     }
-    // };
-
-    while !is_at_end(&source, current) {
+    while current < source.len() {
         if matches_pattern(&source, &"==".to_string(), &mut current) {
             if source[current] == '=' {
-                advance(&mut current);
-                start = current;
-                while source[current] != '=' {
+                if source[current + 1] == '=' {
+                    current += 2;
+                    start = current;
+                    while source[current] != '=' {
+                        advance(&mut current);
+                    }
+                    tokens.push(Token {
+                        start,
+                        length: current - start,
+                        format_type: FormatType::Subsubtitle,
+                    });
+                    current += 4;
+                } else {
                     advance(&mut current);
+                    start = current;
+                    while source[current] != '=' {
+                        advance(&mut current);
+                    }
+                    tokens.push(Token {
+                        start,
+                        length: current - start,
+                        format_type: FormatType::Subtitle,
+                    });
+                    current += 4;
                 }
-                tokens.push(Token {
-                    start,
-                    length: current - start,
-                    format_type: FormatType::Subtitle,
-                });
-                current += 2;
             } else {
                 start = current;
                 while source[current] != '=' {
@@ -250,7 +188,7 @@ fn parse_content(content: &String) {
             });
             current += 3;
         } else if matches_pattern(&source, &"<ref".to_string(), &mut current) {
-            while source[current] != '>' {
+            while matches_pattern(&source, &"/ref>".to_string(), &mut current) {
                 advance(&mut current);
             }
             advance(&mut current);
@@ -258,16 +196,32 @@ fn parse_content(content: &String) {
             while source[current] != '}' {
                 advance(&mut current);
             }
-            advance(&mut current);
+            current += 2;
         } else if matches_pattern(&source, &"[[".to_string(), &mut current) {
             while source[current] != ']' {
                 advance(&mut current);
             }
+            current += 2;
+        } else if matches!(source[current], '*') {
+            // println!("Current character: {}", source[current]);
             advance(&mut current);
+            start = current;
+            while !matches!(source[current], '\\') {
+                advance(&mut current);
+            }
+            tokens.push(Token {
+                start,
+                length: current - start,
+                format_type: FormatType::BulletPoint,
+            });
+            current -= 1;
+        } else if matches_pattern(&source, &"\\n".to_string(), &mut current) {
+            if source[current] == '\\' {
+                current += 2;
+            }
         } else {
-            //
+            advance(&mut current);
         }
-        advance(&mut current); // goes to the last null character
     }
 
     for token in tokens {
