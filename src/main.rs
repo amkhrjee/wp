@@ -2,6 +2,7 @@ use crossterm::cursor::SetCursorStyle;
 use crossterm::style::{Attribute, Color, PrintStyledContent, SetForegroundColor, Stylize};
 use crossterm::terminal::{size, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, execute, queue};
+use std::env::current_dir;
 use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -129,7 +130,7 @@ fn parse_content(content: &String) {
 
     tokens.push(Token {
         start: 20,
-        length: current - start - 1,
+        length: current - start,
         format_type: FormatType::ShortDescription,
     });
     // Main Content
@@ -214,32 +215,59 @@ fn parse_content(content: &String) {
     while !is_at_end(&source, current) {
         if matches_pattern(&source, &"==".to_string(), &mut current) {
             if source[current] == '=' {
-                advance(&source, &mut current);
+                advance(&mut current);
                 start = current;
                 while source[current] != '=' {
-                    advance(&source, &mut current);
+                    advance(&mut current);
                 }
                 tokens.push(Token {
                     start,
                     length: current - start,
                     format_type: FormatType::Subtitle,
                 });
-                current += 3;
+                current += 2;
             } else {
                 start = current;
                 while source[current] != '=' {
-                    advance(&source, &mut current);
+                    advance(&mut current);
                 }
                 tokens.push(Token {
                     start,
                     length: current - start,
                     format_type: FormatType::Title,
                 });
-                current += 4;
+                current += 3;
             }
+        } else if matches_pattern(&source, &"'''".to_string(), &mut current) {
+            start = current;
+            while source[current] != '\'' {
+                advance(&mut current);
+            }
+            tokens.push(Token {
+                start,
+                length: current - start,
+                format_type: FormatType::Bold,
+            });
+            current += 3;
+        } else if matches_pattern(&source, &"<ref".to_string(), &mut current) {
+            while source[current] != '>' {
+                advance(&mut current);
+            }
+            advance(&mut current);
+        } else if matches_pattern(&source, &"{{".to_string(), &mut current) {
+            while source[current] != '}' {
+                advance(&mut current);
+            }
+            advance(&mut current);
+        } else if matches_pattern(&source, &"[[".to_string(), &mut current) {
+            while source[current] != ']' {
+                advance(&mut current);
+            }
+            advance(&mut current);
+        } else {
+            //
         }
-        advance(&source, &mut current);
-        continue;
+        advance(&mut current); // goes to the last null character
     }
 
     for token in tokens {
@@ -254,7 +282,6 @@ fn matches_pattern(source: &[char], pattern: &String, current: &mut usize) -> bo
         return false;
     }
     let source_string = source[*current..end_index + 1].iter().collect::<String>();
-    // println!("From Check Pattern: {}", source_string);
     if source_string == *pattern {
         *current = end_index + 1;
         return true;
@@ -266,6 +293,6 @@ fn is_at_end(source: &[char], current: usize) -> bool {
     source.len() == current
 }
 
-fn advance(source: &[char], current: &mut usize) {
+fn advance(current: &mut usize) {
     *current += 1;
 }
