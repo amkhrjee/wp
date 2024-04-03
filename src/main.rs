@@ -105,9 +105,13 @@ fn parse_content(title: &str, content: &String) {
     while current < source.len() {
         match source[current] {
             '{' => {
+                current += 2;
                 while advance(source, &mut current) != '}' {
                     if source[current] == '{' {
-                        while advance(source, &mut current) != '}' {}
+                        // println!("========== Caught a double {{}} =========");
+                        while advance(source, &mut current) != '}' {
+                            current += 1;
+                        }
                     }
                 }
             }
@@ -152,7 +156,19 @@ fn parse_content(title: &str, content: &String) {
                     _ => {}
                 }
             }
-            _ => current += 1,
+            _ => {
+                start = current;
+                while !matches!(source[current], '=' | '<' | '[' | '{') {
+                    current += 1;
+                }
+                tokens.push(make_token(
+                    start,
+                    current - start,
+                    FormatType::PlainSentence,
+                ));
+                // println!("Character: {}", source[current]);
+                // current += 1;
+            }
         }
     }
     for token in tokens {
