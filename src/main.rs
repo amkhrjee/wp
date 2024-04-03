@@ -14,8 +14,8 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
     // What I have to do:
     // - parse the name out of it
     // - parse the language out of it (future)
@@ -46,7 +46,7 @@ fn get_content(url: String) -> Result<(String, String), reqwest::Error> {
 enum FormatType {
     // URL,
     // Code,
-    Bold,  //done
+    // Bold,  //done
     Title, //done
     PlainSentence,
     Subtitle,    //done
@@ -57,9 +57,9 @@ enum FormatType {
     // CodeSnippet,
     // PostNominal,
     // BlockQuote,
-    Italic,
-    InlineQuote,
-    BulletPoint, //done
+    // Italic,
+    // InlineQuote,
+    // BulletPoint, //done
 }
 
 struct Token {
@@ -97,7 +97,7 @@ fn parse_content(title: &str, content: &String) {
 
     let source = &source;
 
-    let mut start = 0;
+    let mut start;
     let mut current = 0;
 
     let mut tokens = Vec::new();
@@ -108,7 +108,6 @@ fn parse_content(title: &str, content: &String) {
                 current += 2;
                 while advance(source, &mut current) != '}' {
                     if source[current] == '{' {
-                        // println!("========== Caught a double {{}} =========");
                         while advance(source, &mut current) != '}' {
                             current += 1;
                         }
@@ -171,10 +170,10 @@ fn parse_content(title: &str, content: &String) {
             }
         }
     }
-    for token in tokens {
-        token.print(source);
-    }
-    // display(&source, title, &tokens);
+    // for token in tokens {
+    //     token.print(source);
+    // }
+    display(&source, title, &tokens);
 }
 
 fn advance(source: &[char], current: &mut usize) -> char {
@@ -185,19 +184,19 @@ fn advance(source: &[char], current: &mut usize) -> char {
     return source[*current - 1];
 }
 
-fn matches_pattern(source: &[char], pattern: &String, current: &mut usize) -> bool {
-    let pattern_len = pattern.len();
-    let end_index = *current + pattern_len - 1;
-    if end_index >= source.len() {
-        return false;
-    }
-    let source_string = source[*current..end_index + 1].iter().collect::<String>();
-    if source_string == *pattern {
-        *current = end_index + 1;
-        return true;
-    }
-    return false;
-}
+// fn matches_pattern(source: &[char], pattern: &String, current: &mut usize) -> bool {
+//     let pattern_len = pattern.len();
+//     let end_index = *current + pattern_len - 1;
+//     if end_index >= source.len() {
+//         return false;
+//     }
+//     let source_string = source[*current..end_index + 1].iter().collect::<String>();
+//     if source_string == *pattern {
+//         *current = end_index + 1;
+//         return true;
+//     }
+//     return false;
+// }
 
 fn make_token(start: usize, length: usize, format: FormatType) -> Token {
     Token {
@@ -207,54 +206,75 @@ fn make_token(start: usize, length: usize, format: FormatType) -> Token {
     }
 }
 
-// fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
-//     let mut stdout = stdout();
-//     let mut row = 2;
-//     let (width, _height) = size().unwrap();
-//     execute!(stdout, EnterAlternateScreen).unwrap();
+fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
+    let mut stdout = stdout();
+    let mut row = 2;
+    let mut column = 1;
+    let (width, _height) = size().unwrap();
+    execute!(stdout, EnterAlternateScreen).unwrap();
 
-//     // // Set the title
-//     queue!(
-//         stdout,
-//         SetForegroundColor(Color::DarkCyan),
-//         cursor::MoveTo((width - title.len() as u16) / 2, 1),
-//         PrintStyledContent(
-//             title
-//                 .attribute(Attribute::Bold)
-//                 .attribute(Attribute::Underlined)
-//         ),
-//     )
-//     .unwrap();
+    // // Set the title
+    queue!(
+        stdout,
+        SetForegroundColor(Color::DarkCyan),
+        cursor::MoveTo((width - title.len() as u16) / 2, 1),
+        PrintStyledContent(
+            title
+                .attribute(Attribute::Bold)
+                .attribute(Attribute::Underlined)
+        ),
+    )
+    .unwrap();
 
-//     for token in tokens {
-//         match token.format_type {
-//             // FormatType::URL => todo!(),
-//             // FormatType::Code => todo!(),
-//             // FormatType::Bold => todo!(),
-//             FormatType::Title => {
-//                 queue!(
-//                     stdout,
-//                     SetForegroundColor(Color::Blue),
-//                     cursor::MoveTo(1, row)
-//                 )
-//                 .unwrap();
-//                 stdout.write(token.to_string(source).as_bytes()).unwrap();
-//                 row += 1;
-//             } // FormatType::PlainSentence => todo!(),
-//             // FormatType::Subtitle => todo!(),
-//             // FormatType::Subsubtitle => todo!(),
-//             // FormatType::WikiLink => todo!(),
-//             // FormatType::Citation => todo!(),
-//             // FormatType::YearSpan => todo!(),
-//             // FormatType::CodeSnippet => todo!(),
-//             // FormatType::PostNominal => todo!(),
-//             // FormatType::BlockQuote => todo!(),
-//             // FormatType::BulletPoint => todo!(),
-//             // FormatType::ShortDescription => todo!(),
-//             _ => {}
-//         }
-//     }
-//     stdout.flush().unwrap();
-//     thread::sleep(Duration::from_secs(5));
-//     execute!(stdout, LeaveAlternateScreen).unwrap();
-// }
+    for token in tokens {
+        match token.format {
+            // FormatType::URL => todo!(),
+            // FormatType::Code => todo!(),
+            // FormatType::Bold => todo!(),
+            FormatType::Title => {
+                queue!(
+                    stdout,
+                    cursor::MoveTo(1, row),
+                    PrintStyledContent(
+                        token
+                            .to_string(source)
+                            .with(Color::Green)
+                            .attribute(Attribute::Bold)
+                    ),
+                )
+                .unwrap();
+                row += 1;
+            } // FormatType::PlainSentence => todo!(),
+            FormatType::Subtitle => {
+                queue!(
+                    stdout,
+                    cursor::MoveTo(1, row),
+                    PrintStyledContent(token.to_string(source).with(Color::Blue)),
+                )
+                .unwrap();
+                row += 1;
+            }
+            FormatType::Subsubtitle => {
+                queue!(
+                    stdout,
+                    cursor::MoveTo(1, row),
+                    PrintStyledContent(token.to_string(source).with(Color::Cyan)),
+                )
+                .unwrap();
+                row += 1;
+            }
+            // FormatType::WikiLink => todo!(),
+            // FormatType::Citation => todo!(),
+            // FormatType::YearSpan => todo!(),
+            // FormatType::CodeSnippet => todo!(),
+            // FormatType::PostNominal => {}
+            // FormatType::BlockQuote => todo!(),
+            // FormatType::BulletPoint => todo!(),
+            // FormatType::ShortDescription => todo!(),
+            _ => {}
+        }
+    }
+    stdout.flush().unwrap();
+    thread::sleep(Duration::from_secs(5));
+    execute!(stdout, LeaveAlternateScreen).unwrap();
+}
