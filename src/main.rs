@@ -14,7 +14,7 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    let test_link = "https://en.wikipedia.org/wiki/Hurricane_Irene_(2005)".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // What I have to do:
     // - parse the name out of it
     // - parse the language out of it (future)
@@ -56,6 +56,7 @@ enum FormatType {
     // CodeSnippet,
     // PostNominal,
     // BlockQuote,
+    Italic,
     InlineQuote,
     BulletPoint, //done
 }
@@ -63,14 +64,14 @@ enum FormatType {
 struct Token {
     start: usize,
     length: usize,
-    format_type: FormatType,
+    format: FormatType,
 }
 
 impl Token {
     fn print(&self, source: &[char]) {
         println!(
             "FormatType: {:?} | {}",
-            self.format_type,
+            self.format,
             source[self.start..self.start + self.length]
                 .iter()
                 .collect::<String>()
@@ -93,146 +94,49 @@ fn parse_content(title: &str, content: &String) {
         source.push(character);
     }
 
-    source.push('\0');
+    let source = &source;
 
     let mut start = 0;
     let mut current = 0;
+
     let mut tokens = Vec::new();
 
     while current < source.len() {
-        if matches_pattern(&source, &"==".to_string(), &mut current) {
-            if source[current] == '=' {
-                if source[current + 1] == '=' {
-                    current += 2;
-                    start = current;
-                    while source[current] != '=' {
-                        advance(&mut current);
-                    }
-                    tokens.push(Token {
-                        start,
-                        length: current - start,
-                        format_type: FormatType::Subsubtitle,
-                    });
-                    current += 4;
-                } else {
-                    advance(&mut current);
-                    start = current;
-                    while source[current] != '=' {
-                        advance(&mut current);
-                    }
-                    tokens.push(Token {
-                        start,
-                        length: current - start,
-                        format_type: FormatType::Subtitle,
-                    });
-                    current += 4;
-                }
-            } else {
+        if matches_pattern(source, &"''".to_string(), &mut current) {
+            if source[current] == '\'' {
+                advance(source, &mut current);
+                // Bold text
                 start = current;
-                while source[current] != '=' {
-                    advance(&mut current);
-                }
-                tokens.push(Token {
-                    start,
-                    length: current - start,
-                    format_type: FormatType::Title,
-                });
-                current += 2;
-            }
-        } else if matches_pattern(&source, &"'''".to_string(), &mut current) {
-            start = current;
-            while source[current] != '\'' {
-                advance(&mut current);
-            }
-            tokens.push(Token {
-                start,
-                length: current - start,
-                format_type: FormatType::Bold,
-            });
-            current += 3;
-        } else if matches_pattern(&source, &"<ref ".to_string(), &mut current) {
-            // println!("Caught a reference!!!!");
-            // println!("Current Char: {}", source[current]);
-            while !matches!(source[current], '<' | '/') {
-                advance(&mut current);
-            }
-            if source[current] == '/' {
-                current += 2;
+                while advance(&source, &mut current) != '\'' {}
+                tokens.push(make_token(start, current - start - 1, FormatType::Bold));
+                // We are at ', we have two more 's so we add 3 to get to the necxt character
+                current += 3;
             } else {
-                current += 6;
-            }
-        } else if matches_pattern(&source, &"{{".to_string(), &mut current) {
-            while source[current] != '}' {
-                advance(&mut current);
-                if matches!(source[current], '{') {
-                    while source[current] != '}' {
-                        advance(&mut current);
-                    }
-                    current += 2;
-                }
-            }
-            current += 2;
-        } else if matches_pattern(&source, &"[[".to_string(), &mut current) {
-            while source[current] != ']' {
-                advance(&mut current);
-            }
-            current += 2;
-        } else if matches!(source[current], '*') {
-            advance(&mut current);
-            start = current;
-            while !matches!(source[current], '\\') {
-                advance(&mut current);
-            }
-            tokens.push(Token {
-                start,
-                length: current - start,
-                format_type: FormatType::BulletPoint,
-            });
-            current -= 1;
-        } else if matches!(source[current], '\\') {
-            advance(&mut current);
-            if matches!(source[current], 'n') {
-                advance(&mut current);
-                if source[current] == '\\' {
-                    current += 2;
-                }
-            } else if matches!(source[current], '"') {
+                // Italic text
                 start = current;
-                while !matches!(source[current], '\\') {
-                    advance(&mut current);
-                }
-                tokens.push(Token {
-                    start,
-                    length: current - start,
-                    format_type: FormatType::InlineQuote,
-                });
+                while advance(&source, &mut current) != '\'' {}
+                tokens.push(make_token(start, current - start - 1, FormatType::Italic));
+                // we are at ', we have one more ' so we add 2
                 current += 2;
             }
-        } else if matches!(source[current], ' ') {
-            advance(&mut current);
         } else {
-            start = current;
-            while !matches!(source[current], '.' | '\0' | '<' | ',') {
-                if !matches!(source[current], '.' | '<' | ',') {
-                    advance(&mut current);
-                }
-            }
-            tokens.push(Token {
-                start,
-                length: current - start,
-                format_type: FormatType::PlainSentence,
-            });
-
-            advance(&mut current);
+            advance(&source, &mut current);
         }
+        // println!("Current: {}", current);
     }
 
-    for token in &tokens {
-        // if token.format_type == FormatType::Title {
-        token.print(&source);
-        // }
+    for token in tokens {
+        token.print(source);
     }
     // display(&source, title, &tokens);
+}
+
+fn advance(source: &[char], current: &mut usize) -> char {
+    *current += 1;
+    if *current >= source.len() {
+        return '\0';
+    }
+    return source[*current - 1];
 }
 
 fn matches_pattern(source: &[char], pattern: &String, current: &mut usize) -> bool {
@@ -249,58 +153,62 @@ fn matches_pattern(source: &[char], pattern: &String, current: &mut usize) -> bo
     return false;
 }
 
-fn advance(current: &mut usize) {
-    *current += 1;
-}
-
-fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
-    let mut stdout = stdout();
-    let mut row = 2;
-    let (width, _height) = size().unwrap();
-    execute!(stdout, EnterAlternateScreen).unwrap();
-
-    // // Set the title
-    queue!(
-        stdout,
-        SetForegroundColor(Color::DarkCyan),
-        cursor::MoveTo((width - title.len() as u16) / 2, 1),
-        PrintStyledContent(
-            title
-                .attribute(Attribute::Bold)
-                .attribute(Attribute::Underlined)
-        ),
-    )
-    .unwrap();
-
-    for token in tokens {
-        match token.format_type {
-            // FormatType::URL => todo!(),
-            // FormatType::Code => todo!(),
-            // FormatType::Bold => todo!(),
-            FormatType::Title => {
-                queue!(
-                    stdout,
-                    SetForegroundColor(Color::Blue),
-                    cursor::MoveTo(1, row)
-                )
-                .unwrap();
-                stdout.write(token.to_string(source).as_bytes()).unwrap();
-                row += 1;
-            } // FormatType::PlainSentence => todo!(),
-            // FormatType::Subtitle => todo!(),
-            // FormatType::Subsubtitle => todo!(),
-            // FormatType::WikiLink => todo!(),
-            // FormatType::Citation => todo!(),
-            // FormatType::YearSpan => todo!(),
-            // FormatType::CodeSnippet => todo!(),
-            // FormatType::PostNominal => todo!(),
-            // FormatType::BlockQuote => todo!(),
-            // FormatType::BulletPoint => todo!(),
-            // FormatType::ShortDescription => todo!(),
-            _ => {}
-        }
+fn make_token(start: usize, length: usize, format: FormatType) -> Token {
+    Token {
+        start,
+        length,
+        format,
     }
-    stdout.flush().unwrap();
-    thread::sleep(Duration::from_secs(5));
-    execute!(stdout, LeaveAlternateScreen).unwrap();
 }
+
+// fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
+//     let mut stdout = stdout();
+//     let mut row = 2;
+//     let (width, _height) = size().unwrap();
+//     execute!(stdout, EnterAlternateScreen).unwrap();
+
+//     // // Set the title
+//     queue!(
+//         stdout,
+//         SetForegroundColor(Color::DarkCyan),
+//         cursor::MoveTo((width - title.len() as u16) / 2, 1),
+//         PrintStyledContent(
+//             title
+//                 .attribute(Attribute::Bold)
+//                 .attribute(Attribute::Underlined)
+//         ),
+//     )
+//     .unwrap();
+
+//     for token in tokens {
+//         match token.format_type {
+//             // FormatType::URL => todo!(),
+//             // FormatType::Code => todo!(),
+//             // FormatType::Bold => todo!(),
+//             FormatType::Title => {
+//                 queue!(
+//                     stdout,
+//                     SetForegroundColor(Color::Blue),
+//                     cursor::MoveTo(1, row)
+//                 )
+//                 .unwrap();
+//                 stdout.write(token.to_string(source).as_bytes()).unwrap();
+//                 row += 1;
+//             } // FormatType::PlainSentence => todo!(),
+//             // FormatType::Subtitle => todo!(),
+//             // FormatType::Subsubtitle => todo!(),
+//             // FormatType::WikiLink => todo!(),
+//             // FormatType::Citation => todo!(),
+//             // FormatType::YearSpan => todo!(),
+//             // FormatType::CodeSnippet => todo!(),
+//             // FormatType::PostNominal => todo!(),
+//             // FormatType::BlockQuote => todo!(),
+//             // FormatType::BulletPoint => todo!(),
+//             // FormatType::ShortDescription => todo!(),
+//             _ => {}
+//         }
+//     }
+//     stdout.flush().unwrap();
+//     thread::sleep(Duration::from_secs(5));
+//     execute!(stdout, LeaveAlternateScreen).unwrap();
+// }
