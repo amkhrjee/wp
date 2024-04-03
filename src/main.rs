@@ -14,7 +14,8 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
     // What I have to do:
     // - parse the name out of it
     // - parse the language out of it (future)
@@ -50,7 +51,7 @@ enum FormatType {
     PlainSentence,
     Subtitle,    //done
     Subsubtitle, //done
-    // WikiLink,
+    WikiLink,
     // Citation,
     // YearSpan,
     // CodeSnippet,
@@ -102,29 +103,58 @@ fn parse_content(title: &str, content: &String) {
     let mut tokens = Vec::new();
 
     while current < source.len() {
-        if matches_pattern(source, &"''".to_string(), &mut current) {
-            if source[current] == '\'' {
-                advance(source, &mut current);
-                // Bold text
-                start = current;
-                while advance(&source, &mut current) != '\'' {}
-                tokens.push(make_token(start, current - start - 1, FormatType::Bold));
-                // We are at ', we have two more 's so we add 3 to get to the necxt character
-                current += 3;
-            } else {
-                // Italic text
-                start = current;
-                while advance(&source, &mut current) != '\'' {}
-                tokens.push(make_token(start, current - start - 1, FormatType::Italic));
-                // we are at ', we have one more ' so we add 2
-                current += 2;
+        match source[current] {
+            '{' => {
+                while advance(source, &mut current) != '}' {
+                    if source[current] == '{' {
+                        while advance(source, &mut current) != '}' {}
+                    }
+                }
             }
-        } else {
-            advance(&source, &mut current);
+            '[' => {
+                current += 2;
+                start = current;
+                while !matches!(source[current], '|' | ']') {
+                    current += 1;
+                }
+                tokens.push(make_token(start, current - start, FormatType::WikiLink));
+                if source[current] == '|' {
+                    while advance(source, &mut current) != ']' {}
+                } else {
+                    current += 2;
+                }
+            }
+            '<' => while advance(source, &mut current) != '>' {},
+            '=' => {
+                let mut equals_count = 0;
+                while advance(source, &mut current) == '=' {
+                    equals_count += 1;
+                }
+                start = current - 1;
+                while advance(source, &mut current) != '=' {}
+                match equals_count {
+                    2 => {
+                        tokens.push(make_token(start, current - start - 1, FormatType::Title));
+                        current += 1;
+                    }
+                    3 => {
+                        tokens.push(make_token(start, current - start - 1, FormatType::Subtitle));
+                        current += 2;
+                    }
+                    4 => {
+                        tokens.push(make_token(
+                            start,
+                            current - start - 1,
+                            FormatType::Subsubtitle,
+                        ));
+                        current += 3;
+                    }
+                    _ => {}
+                }
+            }
+            _ => current += 1,
         }
-        // println!("Current: {}", current);
     }
-
     for token in tokens {
         token.print(source);
     }
