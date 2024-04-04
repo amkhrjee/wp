@@ -1,7 +1,7 @@
 use crossterm::style::{Attribute, Color, PrintStyledContent, SetForegroundColor, Stylize};
 use crossterm::terminal::{size, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, execute, queue};
-use std::io::{stdout, Write};
+use std::io::{stdout, BufRead, Write};
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
@@ -14,8 +14,9 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
     // What I have to do:
     // - parse the name out of it
     // - parse the language out of it (future)
@@ -59,9 +60,10 @@ enum FormatType {
     // YearSpan,
     // CodeSnippet,
     // PostNominal,
-    // BlockQuote,
-    // InlineQuote,
-    // BulletPoint, //done
+    BulletBold,
+    BulletItalic,
+    BulletPlain,
+    InlineQuote,
 }
 
 struct Token {
@@ -103,6 +105,8 @@ fn parse_content(title: &str, content: &String) {
     let mut current = 0;
 
     let mut tokens = Vec::new();
+
+    let mut is_bullet = false;
 
     while current < source.len() {
         match source[current] {
@@ -160,17 +164,60 @@ fn parse_content(title: &str, content: &String) {
             '\\' => {
                 current += 1;
                 if source[current] == 'n' {
-                    // println!("Encountered a new line character!");
                     start = current - 1;
                     tokens.push(make_token(start, 2, FormatType::NewLine));
+                    current += 1;
+                } else if source[current] == '"' {
+                    current += 1;
+                    start = current + 1;
+                    while advance(source, &mut current) != '\\' {}
+                    tokens.push(make_token(
+                        start,
+                        current - start - 1,
+                        FormatType::InlineQuote,
+                    ));
+                    current += 1;
+                } else {
+                    current += 1
                 }
+            }
+            '*' => {
+                is_bullet = true;
                 current += 1;
+            }
+            '\'' => {
+                if source[current + 1] == '\'' {
+                    let mut apostrophe_count = 0;
+                    let mut format = FormatType::Bold;
+                    while advance(source, &mut current) == '\'' {
+                        apostrophe_count += 1;
+                    }
+                    if apostrophe_count == 2 {
+                        if is_bullet {
+                            format = FormatType::BulletItalic;
+                            is_bullet = false;
+                        } else {
+                            format = FormatType::Italic;
+                        }
+                    } else {
+                        if is_bullet {
+                            format = FormatType::BulletBold;
+                            is_bullet = false;
+                        }
+                    }
+                    start = current - 1;
+                    while advance(source, &mut current) != '\'' {}
+                    tokens.push(make_token(start, current - start - 1, format));
+                    current += apostrophe_count - 1;
+                } else {
+                    current += 1;
+                }
             }
             _ => current += 1,
         }
     }
     for token in tokens {
-        if token.format != FormatType::WikiLink {
+        if token.format != FormatType::WikiLink && token.format != FormatType::NewLine {
             token.print(source);
         }
     }
