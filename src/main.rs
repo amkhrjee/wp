@@ -42,22 +42,24 @@ fn get_content(url: String) -> Result<(String, String), reqwest::Error> {
 
     Ok((title, content))
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum FormatType {
     // URL,
     // Code,
-    // Bold,  //done
-    Title, //done
+    Bold,
+    Title,
+    Italic,
     PlainSentence,
-    Subtitle,    //done
-    Subsubtitle, //done
+    Subtitle,
+    Subsubtitle,
+    ItalicWikiLink,
     WikiLink,
+    NewLine,
     // Citation,
     // YearSpan,
     // CodeSnippet,
     // PostNominal,
     // BlockQuote,
-    // Italic,
     // InlineQuote,
     // BulletPoint, //done
 }
@@ -155,25 +157,24 @@ fn parse_content(title: &str, content: &String) {
                     _ => {}
                 }
             }
-            _ => {
-                start = current;
-                while !matches!(source[current], '=' | '<' | '[' | '{') {
-                    current += 1;
+            '\\' => {
+                current += 1;
+                if source[current] == 'n' {
+                    // println!("Encountered a new line character!");
+                    start = current - 1;
+                    tokens.push(make_token(start, 2, FormatType::NewLine));
                 }
-                tokens.push(make_token(
-                    start,
-                    current - start,
-                    FormatType::PlainSentence,
-                ));
-                // println!("Character: {}", source[current]);
-                // current += 1;
+                current += 1;
             }
+            _ => current += 1,
         }
     }
-    // for token in tokens {
-    //     token.print(source);
-    // }
-    display(&source, title, &tokens);
+    for token in tokens {
+        if token.format != FormatType::WikiLink {
+            token.print(source);
+        }
+    }
+    // display(&source, title, &tokens);
 }
 
 fn advance(source: &[char], current: &mut usize) -> char {
@@ -183,20 +184,6 @@ fn advance(source: &[char], current: &mut usize) -> char {
     }
     return source[*current - 1];
 }
-
-// fn matches_pattern(source: &[char], pattern: &String, current: &mut usize) -> bool {
-//     let pattern_len = pattern.len();
-//     let end_index = *current + pattern_len - 1;
-//     if end_index >= source.len() {
-//         return false;
-//     }
-//     let source_string = source[*current..end_index + 1].iter().collect::<String>();
-//     if source_string == *pattern {
-//         *current = end_index + 1;
-//         return true;
-//     }
-//     return false;
-// }
 
 fn make_token(start: usize, length: usize, format: FormatType) -> Token {
     Token {
@@ -208,8 +195,8 @@ fn make_token(start: usize, length: usize, format: FormatType) -> Token {
 
 fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
     let mut stdout = stdout();
-    let mut row = 2;
-    let mut column = 1;
+    let mut row_number = 2;
+    let mut column_number = 1;
     let (width, _height) = size().unwrap();
     execute!(stdout, EnterAlternateScreen).unwrap();
 
@@ -227,14 +214,28 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
     .unwrap();
 
     for token in tokens {
+        let token_string = token.to_string(source);
         match token.format {
             // FormatType::URL => todo!(),
             // FormatType::Code => todo!(),
-            // FormatType::Bold => todo!(),
+            FormatType::Bold => {
+                queue!(
+                    stdout,
+                    cursor::MoveTo(column_number, row_number),
+                    PrintStyledContent(
+                        token_string
+                            .clone()
+                            .with(Color::White)
+                            .attribute(Attribute::Bold)
+                    ),
+                )
+                .unwrap();
+                column_number += token_string.len() as u16;
+            }
             FormatType::Title => {
                 queue!(
                     stdout,
-                    cursor::MoveTo(1, row),
+                    cursor::MoveTo(1, row_number),
                     PrintStyledContent(
                         token
                             .to_string(source)
@@ -243,25 +244,34 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
                     ),
                 )
                 .unwrap();
-                row += 1;
-            } // FormatType::PlainSentence => todo!(),
+                row_number += 1;
+            }
+            // FormatType::PlainSentence => {
+            //     queue!(
+            //         stdout,
+            //         cursor::MoveTo(1, row),
+            //         PrintStyledContent(token.to_string(source).with(Color::White)),
+            //     )
+            //     .unwrap();
+            //     row += 1;
+            // }
             FormatType::Subtitle => {
                 queue!(
                     stdout,
-                    cursor::MoveTo(1, row),
-                    PrintStyledContent(token.to_string(source).with(Color::Blue)),
+                    cursor::MoveTo(1, row_number),
+                    PrintStyledContent(token_string.with(Color::Blue)),
                 )
                 .unwrap();
-                row += 1;
+                row_number += 1;
             }
             FormatType::Subsubtitle => {
                 queue!(
                     stdout,
-                    cursor::MoveTo(1, row),
-                    PrintStyledContent(token.to_string(source).with(Color::Cyan)),
+                    cursor::MoveTo(1, row_number),
+                    PrintStyledContent(token_string.with(Color::Cyan)),
                 )
                 .unwrap();
-                row += 1;
+                row_number += 1;
             }
             // FormatType::WikiLink => todo!(),
             // FormatType::Citation => todo!(),
@@ -275,6 +285,6 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
         }
     }
     stdout.flush().unwrap();
-    thread::sleep(Duration::from_secs(5));
+    thread::sleep(Duration::from_secs(10));
     execute!(stdout, LeaveAlternateScreen).unwrap();
 }
