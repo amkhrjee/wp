@@ -17,8 +17,9 @@ fn main() {
     // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/Lox".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Luchi".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Ol%C3%A9".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Premendra_Mitra".to_string();
     // What I have to do:
     // - parse the name out of it
@@ -245,15 +246,15 @@ fn parse_content(title: &str, content: &String) {
             }
         }
     }
-    for token in tokens {
-        if token.format != FormatType::NewLine
-            && token.format != FormatType::WikiLink
-            && token.format != FormatType::Space
-        {
-            token.print(source);
-        }
-    }
-    // display(&source, title, &tokens);
+    // for token in tokens {
+    //     if token.format != FormatType::NewLine
+    //         && token.format != FormatType::WikiLink
+    //         && token.format != FormatType::Space
+    //     {
+    //         token.print(source);
+    //     }
+    // }
+    display(&source, title, &tokens);
 }
 
 fn advance(source: &[char], current: &mut usize) -> char {
@@ -275,9 +276,11 @@ fn make_token(start: usize, length: usize, format: FormatType) -> Token {
 fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
     let mut stdout = stdout();
     let mut row_number = 2;
-    let mut column_number = 1;
+    let mut column_number = 0;
     let (width, _height) = size().unwrap();
     execute!(stdout, EnterAlternateScreen).unwrap();
+
+    let mut has_first_word_rendered = false;
 
     // // Set the title
     queue!(
@@ -291,6 +294,7 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
         ),
     )
     .unwrap();
+    row_number += 2;
 
     for token in tokens {
         let token_string = token.to_string(source);
@@ -300,7 +304,10 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
             FormatType::Bold => {
                 queue!(
                     stdout,
-                    cursor::MoveTo(column_number, row_number),
+                    cursor::MoveTo(
+                        get_column_number(&mut row_number, &mut column_number),
+                        row_number
+                    ),
                     PrintStyledContent(
                         token_string
                             .clone()
@@ -311,10 +318,27 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
                 .unwrap();
                 column_number += token_string.len() as u16;
             }
+            FormatType::Italic => {
+                queue!(
+                    stdout,
+                    cursor::MoveTo(
+                        get_column_number(&mut row_number, &mut column_number),
+                        row_number
+                    ),
+                    PrintStyledContent(
+                        token_string
+                            .clone()
+                            .with(Color::White)
+                            .attribute(Attribute::Italic)
+                    ),
+                )
+                .unwrap();
+                column_number += token_string.len() as u16;
+            }
             FormatType::Title => {
                 queue!(
                     stdout,
-                    cursor::MoveTo(1, row_number),
+                    cursor::MoveTo(0, row_number),
                     PrintStyledContent(
                         token
                             .to_string(source)
@@ -323,34 +347,54 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
                     ),
                 )
                 .unwrap();
-                row_number += 1;
+                // row_number += 1;
+                column_number = 0;
             }
-            // FormatType::PlainSentence => {
-            //     queue!(
-            //         stdout,
-            //         cursor::MoveTo(1, row),
-            //         PrintStyledContent(token.to_string(source).with(Color::White)),
-            //     )
-            //     .unwrap();
-            //     row += 1;
-            // }
+            FormatType::PlainWord => {
+                // will have to go character by character
+                // for character in token_string.chars() {}
+                if !has_first_word_rendered {
+                    has_first_word_rendered = true;
+                }
+                queue!(
+                    stdout,
+                    cursor::MoveTo(
+                        get_column_number(&mut row_number, &mut column_number),
+                        row_number
+                    ),
+                    PrintStyledContent(token_string.clone().with(Color::White)),
+                )
+                .unwrap();
+                column_number += token_string.len() as u16;
+            }
+            FormatType::Space => {
+                column_number += 1;
+            }
             FormatType::Subtitle => {
                 queue!(
                     stdout,
-                    cursor::MoveTo(1, row_number),
+                    cursor::MoveTo(0, row_number),
                     PrintStyledContent(token_string.with(Color::Blue)),
                 )
                 .unwrap();
                 row_number += 1;
+                column_number = 0;
             }
             FormatType::Subsubtitle => {
                 queue!(
                     stdout,
-                    cursor::MoveTo(1, row_number),
+                    cursor::MoveTo(0, row_number),
                     PrintStyledContent(token_string.with(Color::Cyan)),
                 )
                 .unwrap();
                 row_number += 1;
+                column_number = 0;
+            }
+            FormatType::NewLine => {
+                if has_first_word_rendered {
+                    row_number += 1;
+                    column_number = 0;
+                }
             }
             // FormatType::WikiLink => todo!(),
             // FormatType::Citation => todo!(),
@@ -364,6 +408,17 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
         }
     }
     stdout.flush().unwrap();
-    thread::sleep(Duration::from_secs(10));
+    thread::sleep(Duration::from_secs(60));
     execute!(stdout, LeaveAlternateScreen).unwrap();
+}
+
+fn get_column_number(row_number: &mut u16, column_number: &mut u16) -> u16 {
+    let (columns, _) = size().unwrap();
+    let initial_column_number = *column_number;
+    if *column_number >= columns {
+        *column_number = 0;
+        *row_number += 1;
+    }
+
+    initial_column_number % columns
 }
