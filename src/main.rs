@@ -14,9 +14,11 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Lox".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Premendra_Mitra".to_string();
     // What I have to do:
     // - parse the name out of it
@@ -51,7 +53,9 @@ enum FormatType {
     Bold,
     Title,
     Italic,
-    PlainSentence,
+    PlainWord,
+    Space,
+    Period,
     Subtitle,
     Subsubtitle,
     ItalicWikiLink,
@@ -127,19 +131,20 @@ fn parse_content(title: &str, content: &String) {
                         current += 1;
                     }
                 }
+                current += 1;
             }
             '[' => {
+                // There are many possibilities here
+                // If it has nesting - then we completely ignore this
+                // otherwise we check for links [todo]
                 current += 2;
-                start = current;
-                while !matches!(source[current], '|' | ']') {
-                    current += 1;
+                while advance(source, &mut current) != ']' {
+                    if source[current] == '[' {
+                        while advance(source, &mut current) != ']' {}
+                        current += 1;
+                    }
                 }
-                tokens.push(make_token(start, current - start, FormatType::WikiLink));
-                if source[current] == '|' {
-                    while advance(source, &mut current) != ']' {}
-                } else {
-                    current += 2;
-                }
+                current += 1;
             }
             '<' => while advance(source, &mut current) != '>' {},
             '=' => {
@@ -221,11 +226,30 @@ fn parse_content(title: &str, content: &String) {
                     current += 1;
                 }
             }
-            _ => current += 1,
+            ' ' => {
+                tokens.push(make_token(current, 1, FormatType::Space));
+                current += 1;
+            }
+            _ => {
+                start = current;
+                while !matches!(
+                    source[current],
+                    '<' | '=' | '{' | '[' | '\\' | '*' | ' ' | '\'' | '\0'
+                ) {
+                    current += 1;
+                }
+                tokens.push(make_token(start, current - start, FormatType::PlainWord));
+                if source[current] == '\0' {
+                    break;
+                }
+            }
         }
     }
     for token in tokens {
-        if token.format != FormatType::NewLine && token.format != FormatType::WikiLink {
+        if token.format != FormatType::NewLine
+            && token.format != FormatType::WikiLink
+            && token.format != FormatType::Space
+        {
             token.print(source);
         }
     }
