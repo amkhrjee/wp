@@ -16,7 +16,8 @@ fn main() {
 
     // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Premendra_Mitra".to_string();
     // What I have to do:
     // - parse the name out of it
     // - parse the language out of it (future)
@@ -114,9 +115,9 @@ fn parse_content(title: &str, content: &String) {
                 current += 2;
                 while advance(source, &mut current) != '}' {
                     if source[current] == '{' {
-                        while advance(source, &mut current) != '}' {
-                            current += 1;
-                        }
+                        current += 1;
+                        while advance(source, &mut current) != '}' {}
+                        current += 1;
                     }
                 }
             }
@@ -169,7 +170,7 @@ fn parse_content(title: &str, content: &String) {
                     current += 1;
                 } else if source[current] == '"' {
                     current += 1;
-                    start = current + 1;
+                    start = current;
                     while advance(source, &mut current) != '\\' {}
                     tokens.push(make_token(
                         start,
@@ -199,7 +200,7 @@ fn parse_content(title: &str, content: &String) {
                         } else {
                             format = FormatType::Italic;
                         }
-                    } else {
+                    } else if apostrophe_count == 3 {
                         if is_bullet {
                             format = FormatType::BulletBold;
                             is_bullet = false;
@@ -217,7 +218,7 @@ fn parse_content(title: &str, content: &String) {
         }
     }
     for token in tokens {
-        if token.format != FormatType::WikiLink && token.format != FormatType::NewLine {
+        if token.format != FormatType::NewLine && token.format != FormatType::WikiLink {
             token.print(source);
         }
     }
