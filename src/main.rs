@@ -14,10 +14,10 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/Premendra_Mitra".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Premendra_Mitra".to_string();
     // What I have to do:
     // - parse the name out of it
     // - parse the language out of it (future)
@@ -112,11 +112,18 @@ fn parse_content(title: &str, content: &String) {
     while current < source.len() {
         match source[current] {
             '{' => {
+                // Assuming we can only have three levels of nesting
                 current += 2;
                 while advance(source, &mut current) != '}' {
                     if source[current] == '{' {
                         current += 1;
-                        while advance(source, &mut current) != '}' {}
+                        while advance(source, &mut current) != '}' {
+                            if source[current] == '{' {
+                                current += 1;
+                                while advance(source, &mut current) != '}' {}
+                                current += 1;
+                            }
+                        }
                         current += 1;
                     }
                 }
