@@ -1,6 +1,7 @@
 use crossterm::style::{Attribute, Color, PrintStyledContent, SetForegroundColor, Stylize};
 use crossterm::terminal::{size, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, execute, queue};
+use std::fmt::format;
 use std::io::{stdout, BufRead, Write};
 use std::path::PathBuf;
 use std::thread;
@@ -17,9 +18,9 @@ fn main() {
     // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
-    // let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/Luchi".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/Ol%C3%A9".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Luchi".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Ol%C3%A9".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Premendra_Mitra".to_string();
     // What I have to do:
     // - parse the name out of it
@@ -351,8 +352,6 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
                 column_number = 0;
             }
             FormatType::PlainWord => {
-                // will have to go character by character
-                // for character in token_string.chars() {}
                 if !has_first_word_rendered {
                     has_first_word_rendered = true;
                 }
@@ -395,6 +394,24 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
                     row_number += 1;
                     column_number = 0;
                 }
+            }
+            FormatType::InlineQuote => {
+                let quote_string = format!("\"{token_string}\"");
+                queue!(
+                    stdout,
+                    cursor::MoveTo(
+                        get_column_number(&mut row_number, &mut column_number),
+                        row_number
+                    ),
+                    PrintStyledContent(
+                        quote_string
+                            .clone()
+                            .with(Color::White)
+                            .attribute(Attribute::Italic)
+                    ),
+                )
+                .unwrap();
+                column_number += quote_string.len() as u16;
             }
             // FormatType::WikiLink => todo!(),
             // FormatType::Citation => todo!(),
