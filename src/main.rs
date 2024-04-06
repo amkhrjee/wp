@@ -14,9 +14,9 @@ fn main() {
     //     println!("{arg}");
     // }
 
-    // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Luchi".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Ol%C3%A9".to_string();
@@ -154,6 +154,7 @@ fn parse_content(title: &str, content: &String) {
                 if !has_nesting && !has_pipe {
                     tokens.push(make_token(start, current - start - 1, FormatType::WikiLink));
                 }
+                // TODO: handle the pipe case
 
                 current += 1;
             }
