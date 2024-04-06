@@ -1,8 +1,7 @@
 use crossterm::style::{Attribute, Color, PrintStyledContent, SetForegroundColor, Stylize};
 use crossterm::terminal::{size, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, execute, queue};
-use std::fmt::format;
-use std::io::{stdout, BufRead, Write};
+use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
@@ -17,8 +16,8 @@ fn main() {
 
     // let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
-    // let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
-    let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
+    let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
+    // let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Luchi".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Ol%C3%A9".to_string();
     // let test_link = "https://en.wikipedia.org/wiki/Premendra_Mitra".to_string();
@@ -57,7 +56,6 @@ enum FormatType {
     Italic,
     PlainWord,
     Space,
-    Period,
     Subtitle,
     Subsubtitle,
     ItalicWikiLink,
@@ -139,13 +137,24 @@ fn parse_content(title: &str, content: &String) {
                 // There are many possibilities here
                 // If it has nesting - then we completely ignore this
                 // otherwise we check for links [todo]
+                let mut has_nesting = false;
+                let mut has_pipe = false;
                 current += 2;
+                start = current;
                 while advance(source, &mut current) != ']' {
                     if source[current] == '[' {
+                        has_nesting = true;
                         while advance(source, &mut current) != ']' {}
                         current += 1;
+                    } else if source[current] == '|' {
+                        has_pipe = true;
                     }
                 }
+
+                if !has_nesting && !has_pipe {
+                    tokens.push(make_token(start, current - start - 1, FormatType::WikiLink));
+                }
+
                 current += 1;
             }
             '<' => while advance(source, &mut current) != '>' {},
@@ -221,6 +230,7 @@ fn parse_content(title: &str, content: &String) {
                         }
                     }
                     start = current - 1;
+
                     while advance(source, &mut current) != '\'' {}
                     tokens.push(make_token(start, current - start - 1, format));
                     current += apostrophe_count - 1;
@@ -413,7 +423,61 @@ fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
                 .unwrap();
                 column_number += quote_string.len() as u16;
             }
-            // FormatType::WikiLink => todo!(),
+            FormatType::BulletBold => {
+                column_number = 4;
+                queue!(
+                    stdout,
+                    cursor::MoveTo(
+                        get_column_number(&mut row_number, &mut column_number),
+                        row_number
+                    ),
+                    PrintStyledContent(
+                        token_string
+                            .clone()
+                            .with(Color::White)
+                            .attribute(Attribute::Bold)
+                    ),
+                )
+                .unwrap();
+                column_number += token_string.len() as u16;
+            }
+            FormatType::BulletItalic => {
+                column_number = 4;
+                let bullet_string = format!("- {token_string}");
+                queue!(
+                    stdout,
+                    cursor::MoveTo(
+                        get_column_number(&mut row_number, &mut column_number),
+                        row_number
+                    ),
+                    PrintStyledContent(
+                        bullet_string
+                            .clone()
+                            .with(Color::White)
+                            .attribute(Attribute::Italic)
+                    ),
+                )
+                .unwrap();
+                column_number += bullet_string.len() as u16;
+            }
+
+            FormatType::WikiLink => {
+                queue!(
+                    stdout,
+                    cursor::MoveTo(
+                        get_column_number(&mut row_number, &mut column_number),
+                        row_number
+                    ),
+                    PrintStyledContent(
+                        token_string
+                            .clone()
+                            .with(Color::Blue)
+                            .attribute(Attribute::Bold)
+                    ),
+                )
+                .unwrap();
+                column_number += token_string.len() as u16;
+            }
             // FormatType::Citation => todo!(),
             // FormatType::YearSpan => todo!(),
             // FormatType::CodeSnippet => todo!(),
