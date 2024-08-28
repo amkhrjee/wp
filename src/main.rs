@@ -57,7 +57,7 @@ fn main() {
         .file_name()
         .unwrap()
         .to_str()
-        .unwrap_or_else(|| panic!("Err: could not get name of article."));
+        .unwrap_or_else(|| panic!("Error: could not get name of article."));
 
     let url = Url::parse(&link).unwrap();
     let wikipedia_url = url.host_str().unwrap();
