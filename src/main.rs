@@ -1,9 +1,5 @@
 use clap::Parser;
-use std::{
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::path::PathBuf;
 use url::Url;
 
 use utils::*;
@@ -43,18 +39,6 @@ struct Token {
     format: FormatType,
 }
 
-impl Token {
-    fn print(&self, source: &Vec<char>) {
-        println!(
-            "{:?} => {}",
-            self.format,
-            source[self.start..self.start + self.length]
-                .iter()
-                .collect::<String>()
-        )
-    }
-}
-
 fn main() {
     let args = Args::parse();
     let link = args.link;
@@ -84,7 +68,7 @@ fn main() {
     }
 }
 
-fn get_article(url: String) -> Result<(String), String> {
+fn get_article(url: String) -> Result<String, String> {
     let response: serde_json::Value = reqwest::blocking::get(url)
         .map_err(|err| format!("Error: Could not fetch article due to {}", err))?
         .json()
@@ -248,50 +232,4 @@ fn parse_text(characters: &Vec<char>) -> Result<Vec<Token>, String> {
     }
 
     Ok(tokens)
-}
-
-fn generate_plaintext(tokens: &Vec<Token>, characters: &Vec<char>) -> String {
-    let mut plaintext = String::new();
-    let get_text = |token: &Token| {
-        characters[token.start..token.start + token.length]
-            .iter()
-            .collect::<String>()
-    };
-    for token in tokens {
-        match token.format {
-            FormatType::Title
-            | FormatType::Bold
-            | FormatType::Italic
-            | FormatType::PlainWord
-            | FormatType::Subtitle
-            | FormatType::Subsubtitle
-            | FormatType::WikiLink
-            | FormatType::BulletBold
-            | FormatType::BulletItalic
-            | FormatType::InlineQuote => plaintext.push_str(&get_text(token)),
-
-            FormatType::Space => plaintext.push(' '),
-            FormatType::NewLine => plaintext.push('\n'),
-        }
-    }
-    plaintext.trim().to_string()
-}
-
-fn output_to_stdout(plaintext_string: &str) {
-    println!("{}", plaintext_string);
-}
-
-fn save_to_disk(plaintext_string: &str, article_title: &str) {
-    let path = Path::new(article_title);
-
-    let mut file = match File::create(&path) {
-        Err(why) => panic!("Error: Couldn't create {}: {}", path.display(), why),
-        Ok(file) => file,
-    };
-
-    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
-    match file.write_all(plaintext_string.as_bytes()) {
-        Err(why) => panic!("Error: Couldn't write to {}: {}", path.display(), why),
-        Ok(_) => println!("Saved to {}", path.display()),
-    }
 }

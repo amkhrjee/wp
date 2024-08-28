@@ -7,4 +7,4 @@ Todo:
 - output in a directory
 - progress bar
 - helpful errors
-- fix {} escape
+- fix {} escapeQ
