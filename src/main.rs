@@ -1,8 +1,7 @@
-use clap::{builder::PossibleValue, Parser};
+use clap::Parser;
 use std::{
     fs::File,
     io::Write,
-    os::linux::raw::stat,
     path::{Path, PathBuf},
 };
 use url::Url;
