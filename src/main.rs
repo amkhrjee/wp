@@ -1,56 +1,10 @@
-use crossterm::style::{Attribute, Color, PrintStyledContent, SetForegroundColor, Stylize};
-use crossterm::terminal::{size, EnterAlternateScreen, LeaveAlternateScreen};
-use crossterm::{cursor, execute, queue};
-use std::io::{stdout, Write};
 use std::path::PathBuf;
-use std::thread;
-use std::time::Duration;
 
-fn main() {
-    // let args: Vec<_> = env::args().collect();
+use utils::*;
+mod utils;
 
-    // println!("here are the args:");
-    // for arg in args {
-    //     println!("{arg}");
-    // }
-
-    let test_link = "https://en.wikipedia.org/wiki/Alan_Turing".to_string();
-    // let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers".to_string();
-    // let test_link = "https://en.wikipedia.org/wiki/Konnagar".to_string();
-    // let test_link = "https://en.wikipedia.org/wiki/South_Suburban_School_(Main)".to_string();
-    // let test_link = "https://en.wikipedia.org/wiki/Luchi".to_string();
-    // let test_link = "https://en.wikipedia.org/wiki/Ol%C3%A9".to_string();
-    // let test_link = "https://en.wikipedia.org/wiki/Premendra_Mitra".to_string();
-    // What I have to do:
-    // - parse the name out of it
-    // - parse the language out of it (future)
-
-    let path_buf = PathBuf::from(test_link);
-    let title = path_buf.file_name().unwrap().to_str().unwrap();
-
-    let url = format!("https://en.wikipedia.org/w/api.php?action=query&format=json&prop=revisions&titles={title}&formatversion=2&rvprop=content&rvslots=*");
-
-    let (title, content) = get_content(url).unwrap();
-    let content_len = content.len();
-    let content = &content[1..content_len - 1].to_string();
-    let title_len = title.len();
-    let title = &title[1..title_len - 1];
-    parse_content(&title, content);
-}
-
-fn get_content(url: String) -> Result<(String, String), reqwest::Error> {
-    let res: serde_json::Value = reqwest::blocking::get(url)?.json()?;
-
-    let title = res["query"]["pages"][0]["title"].to_string();
-
-    let content = res["query"]["pages"][0]["revisions"][0]["slots"]["main"]["content"].to_string();
-
-    Ok((title, content))
-}
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug)]
 enum FormatType {
-    // URL,
-    // Code,
     Bold,
     Title,
     Italic,
@@ -58,16 +12,10 @@ enum FormatType {
     Space,
     Subtitle,
     Subsubtitle,
-    ItalicWikiLink,
     WikiLink,
     NewLine,
-    // Citation,
-    // YearSpan,
-    // CodeSnippet,
-    // PostNominal,
     BulletBold,
     BulletItalic,
-    BulletPlain,
     InlineQuote,
 }
 
@@ -78,53 +26,75 @@ struct Token {
 }
 
 impl Token {
-    fn print(&self, source: &[char]) {
+    fn print(&self, source: &Vec<char>) {
         println!(
-            "FormatType: {:?} | {}",
+            "{:?} => {}",
             self.format,
             source[self.start..self.start + self.length]
                 .iter()
                 .collect::<String>()
         )
     }
+}
 
-    fn to_string(&self, source: &[char]) -> String {
-        source[self.start..self.start + self.length]
-            .iter()
-            .collect::<String>()
-            .trim()
-            .to_string()
+fn main() {
+    let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers";
+    let path_buf = PathBuf::from(test_link);
+    // well, if we can't get the name, just panic and quit!
+    let url_title = path_buf
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap_or_else(|| panic!("Err: could not get name of article."));
+
+    let (article_title, raw_text) = get_article(format!("https://en.wikipedia.org/w/api.php?action=query&format=json&prop=revisions&titles={url_title}&formatversion=2&rvprop=content&rvslots=*")).unwrap();
+    println!("Article Title: {article_title}");
+
+    // Trimming the fat
+    let slice_index = raw_text.find("'''").unwrap();
+    let mut characters: Vec<char> = raw_text[slice_index..].chars().collect();
+    characters.pop();
+    characters.push('\0');
+    let tokens = parse_text(&characters).unwrap();
+    for token in tokens {
+        token.print(&characters);
     }
 }
 
-fn parse_content(title: &str, content: &String) {
-    let mut source = Vec::new();
+fn get_article(url: String) -> Result<(String, String), String> {
+    let response: serde_json::Value = reqwest::blocking::get(url)
+        .map_err(|err| format!("Error: Could not fetch article due to {}", err))?
+        .json()
+        .map_err(|err| format!("Error: JSON conversion failed due to {}", err))?;
+    Ok((
+        response["query"]["pages"][0]["title"].to_string(),
+        response["query"]["pages"][0]["revisions"][0]["slots"]["main"]["content"].to_string(),
+    ))
+}
 
-    for character in content.chars() {
-        source.push(character);
-    }
+// little utils : move to a separate file
 
-    let source = &source;
-
-    let mut start;
+fn parse_text(characters: &Vec<char>) -> Result<Vec<Token>, String> {
+    let mut start: usize;
     let mut current = 0;
-
-    let mut tokens = Vec::new();
-
+    let mut tokens: Vec<Token> = Vec::new();
     let mut is_bullet = false;
 
-    while current < source.len() {
-        match source[current] {
+    // Removing the Infobox stuff (let's call it "Prelude")
+    // Assumption: the first word is always bold
+    while current < characters.len() {
+        match characters[current] {
             '{' => {
                 // Assuming we can only have three levels of nesting
+                // This is some convoluted shit thanks to wikipedia's format:(
                 current += 2;
-                while advance(source, &mut current) != '}' {
-                    if source[current] == '{' {
+                while advance(characters, &mut current) != '}' {
+                    if characters[current] == '{' {
                         current += 1;
-                        while advance(source, &mut current) != '}' {
-                            if source[current] == '{' {
+                        while advance(characters, &mut current) != '}' {
+                            if characters[current] == '{' {
                                 current += 1;
-                                while advance(source, &mut current) != '}' {}
+                                while advance(characters, &mut current) != '}' {}
                                 current += 1;
                             }
                         }
@@ -133,88 +103,11 @@ fn parse_content(title: &str, content: &String) {
                 }
                 current += 1;
             }
-            '[' => {
-                // There are many possibilities here
-                // If it has nesting - then we completely ignore this
-                // otherwise we check for links [todo]
-                let mut has_nesting = false;
-                let mut has_pipe = false;
-                current += 2;
-                start = current;
-                while advance(source, &mut current) != ']' {
-                    if source[current] == '[' {
-                        has_nesting = true;
-                        while advance(source, &mut current) != ']' {}
-                        current += 1;
-                    } else if source[current] == '|' {
-                        has_pipe = true;
-                    }
-                }
-
-                if !has_nesting && !has_pipe {
-                    tokens.push(make_token(start, current - start - 1, FormatType::WikiLink));
-                }
-                // TODO: handle the pipe case
-
-                current += 1;
-            }
-            '<' => while advance(source, &mut current) != '>' {},
-            '=' => {
-                let mut equals_count = 0;
-                while advance(source, &mut current) == '=' {
-                    equals_count += 1;
-                }
-                start = current - 1;
-                while advance(source, &mut current) != '=' {}
-                match equals_count {
-                    2 => {
-                        tokens.push(make_token(start, current - start - 1, FormatType::Title));
-                        current += 1;
-                    }
-                    3 => {
-                        tokens.push(make_token(start, current - start - 1, FormatType::Subtitle));
-                        current += 2;
-                    }
-                    4 => {
-                        tokens.push(make_token(
-                            start,
-                            current - start - 1,
-                            FormatType::Subsubtitle,
-                        ));
-                        current += 3;
-                    }
-                    _ => {}
-                }
-            }
-            '\\' => {
-                current += 1;
-                if source[current] == 'n' {
-                    start = current - 1;
-                    tokens.push(make_token(start, 2, FormatType::NewLine));
-                    current += 1;
-                } else if source[current] == '"' {
-                    current += 1;
-                    start = current;
-                    while advance(source, &mut current) != '\\' {}
-                    tokens.push(make_token(
-                        start,
-                        current - start - 1,
-                        FormatType::InlineQuote,
-                    ));
-                    current += 1;
-                } else {
-                    current += 1
-                }
-            }
-            '*' => {
-                is_bullet = true;
-                current += 1;
-            }
             '\'' => {
-                if source[current + 1] == '\'' {
+                if peek_ahead(&characters, current) == '\'' {
                     let mut apostrophe_count = 0;
                     let mut format = FormatType::Bold;
-                    while advance(source, &mut current) == '\'' {
+                    while advance(&characters, &mut current) == '\'' {
                         apostrophe_count += 1;
                     }
                     if apostrophe_count == 2 {
@@ -232,275 +125,104 @@ fn parse_content(title: &str, content: &String) {
                     }
                     start = current - 1;
 
-                    while advance(source, &mut current) != '\'' {}
-                    tokens.push(make_token(start, current - start - 1, format));
+                    while advance(&characters, &mut current) != '\'' {}
+                    add_token(&mut tokens, start, current, format);
                     current += apostrophe_count - 1;
                 } else {
                     current += 1;
                 }
             }
+            '[' => {
+                // There are many possibilities here
+                // If it has nesting - then we completely ignore this
+                // otherwise we check for links [todo]
+                let mut has_nesting = false;
+                let mut has_pipe = false;
+                current += 2;
+                start = current;
+                while advance(characters, &mut current) != ']' {
+                    if characters[current] == '[' {
+                        has_nesting = true;
+                        while advance(characters, &mut current) != ']' {}
+                        current += 1;
+                    } else if characters[current] == '|' {
+                        has_pipe = true;
+                    }
+                }
+
+                if !has_nesting && !has_pipe {
+                    add_token(&mut tokens, start, current, FormatType::WikiLink);
+                }
+                // TODO: handle the pipe case
+
+                current += 1;
+            }
             ' ' => {
-                tokens.push(make_token(current, 1, FormatType::Space));
+                add_space(&mut tokens, current);
+                current += 1;
+            }
+            '<' => while advance(characters, &mut current) != '>' {},
+            '=' => {
+                let mut equals_count = 0;
+                while advance(characters, &mut current) == '=' {
+                    equals_count += 1;
+                }
+                start = current - 1;
+                while advance(characters, &mut current) != '=' {}
+                match equals_count {
+                    2 => {
+                        add_token(&mut tokens, start, current, FormatType::Title);
+                        current += 1;
+                    }
+                    3 => {
+                        add_token(&mut tokens, start, current, FormatType::Subtitle);
+                        current += 2;
+                    }
+                    4 => {
+                        add_token(&mut tokens, start, current, FormatType::Subsubtitle);
+                        current += 3;
+                    }
+                    _ => {}
+                }
+            }
+            '\\' => {
+                current += 1;
+                if characters[current] == 'n' {
+                    add_new_line(&mut tokens, current);
+                } else if characters[current] == '"' {
+                    current += 1;
+                    start = current;
+                    while advance(characters, &mut current) != '\\' {}
+                    add_token(&mut tokens, start, current, FormatType::InlineQuote);
+                }
+                current += 1;
+            }
+            '*' => {
+                is_bullet = true;
                 current += 1;
             }
             _ => {
+                if current >= characters.len() {
+                    break;
+                }
                 start = current;
                 while !matches!(
-                    source[current],
+                    characters[current],
                     '<' | '=' | '{' | '[' | '\\' | '*' | ' ' | '\'' | '\0'
                 ) {
                     current += 1;
                 }
-                tokens.push(make_token(start, current - start, FormatType::PlainWord));
-                if source[current] == '\0' {
+                tokens.push(Token {
+                    start,
+                    length: current - start,
+                    format: FormatType::PlainWord,
+                });
+                if characters[current] == '\0' {
                     break;
                 }
             }
         }
     }
-    // for token in tokens {
-    //     if token.format != FormatType::NewLine
-    //         && token.format != FormatType::WikiLink
-    //         && token.format != FormatType::Space
-    //     {
-    //         token.print(source);
-    //     }
-    // }
-    display(&source, title, &tokens);
-}
 
-fn advance(source: &[char], current: &mut usize) -> char {
-    *current += 1;
-    if *current >= source.len() {
-        return '\0';
-    }
-    return source[*current - 1];
-}
-
-fn make_token(start: usize, length: usize, format: FormatType) -> Token {
-    Token {
-        start,
-        length,
-        format,
-    }
-}
-
-fn display(source: &[char], title: &str, tokens: &Vec<Token>) {
-    let mut stdout = stdout();
-    let mut row_number = 2;
-    let mut column_number = 0;
-    let (width, _height) = size().unwrap();
-    execute!(stdout, EnterAlternateScreen).unwrap();
-
-    let mut has_first_word_rendered = false;
-
-    // // Set the title
-    queue!(
-        stdout,
-        SetForegroundColor(Color::DarkCyan),
-        cursor::MoveTo((width - title.len() as u16) / 2, 1),
-        PrintStyledContent(
-            title
-                .attribute(Attribute::Bold)
-                .attribute(Attribute::Underlined)
-        ),
-    )
-    .unwrap();
-    row_number += 2;
-
-    for token in tokens {
-        let token_string = token.to_string(source);
-        match token.format {
-            // FormatType::URL => todo!(),
-            // FormatType::Code => todo!(),
-            FormatType::Bold => {
-                queue!(
-                    stdout,
-                    cursor::MoveTo(
-                        get_column_number(&mut row_number, &mut column_number),
-                        row_number
-                    ),
-                    PrintStyledContent(
-                        token_string
-                            .clone()
-                            .with(Color::White)
-                            .attribute(Attribute::Bold)
-                    ),
-                )
-                .unwrap();
-                column_number += token_string.len() as u16;
-            }
-            FormatType::Italic => {
-                queue!(
-                    stdout,
-                    cursor::MoveTo(
-                        get_column_number(&mut row_number, &mut column_number),
-                        row_number
-                    ),
-                    PrintStyledContent(
-                        token_string
-                            .clone()
-                            .with(Color::White)
-                            .attribute(Attribute::Italic)
-                    ),
-                )
-                .unwrap();
-                column_number += token_string.len() as u16;
-            }
-            FormatType::Title => {
-                queue!(
-                    stdout,
-                    cursor::MoveTo(0, row_number),
-                    PrintStyledContent(
-                        token
-                            .to_string(source)
-                            .with(Color::Green)
-                            .attribute(Attribute::Bold)
-                    ),
-                )
-                .unwrap();
-                // row_number += 1;
-                column_number = 0;
-            }
-            FormatType::PlainWord => {
-                if !has_first_word_rendered {
-                    has_first_word_rendered = true;
-                }
-                queue!(
-                    stdout,
-                    cursor::MoveTo(
-                        get_column_number(&mut row_number, &mut column_number),
-                        row_number
-                    ),
-                    PrintStyledContent(token_string.clone().with(Color::White)),
-                )
-                .unwrap();
-                column_number += token_string.len() as u16;
-            }
-            FormatType::Space => {
-                column_number += 1;
-            }
-            FormatType::Subtitle => {
-                queue!(
-                    stdout,
-                    cursor::MoveTo(0, row_number),
-                    PrintStyledContent(token_string.with(Color::Blue)),
-                )
-                .unwrap();
-                row_number += 1;
-                column_number = 0;
-            }
-            FormatType::Subsubtitle => {
-                queue!(
-                    stdout,
-                    cursor::MoveTo(0, row_number),
-                    PrintStyledContent(token_string.with(Color::Cyan)),
-                )
-                .unwrap();
-                row_number += 1;
-                column_number = 0;
-            }
-            FormatType::NewLine => {
-                if has_first_word_rendered {
-                    row_number += 1;
-                    column_number = 0;
-                }
-            }
-            FormatType::InlineQuote => {
-                let quote_string = format!("\"{token_string}\"");
-                queue!(
-                    stdout,
-                    cursor::MoveTo(
-                        get_column_number(&mut row_number, &mut column_number),
-                        row_number
-                    ),
-                    PrintStyledContent(
-                        quote_string
-                            .clone()
-                            .with(Color::White)
-                            .attribute(Attribute::Italic)
-                    ),
-                )
-                .unwrap();
-                column_number += quote_string.len() as u16;
-            }
-            FormatType::BulletBold => {
-                column_number = 4;
-                queue!(
-                    stdout,
-                    cursor::MoveTo(
-                        get_column_number(&mut row_number, &mut column_number),
-                        row_number
-                    ),
-                    PrintStyledContent(
-                        token_string
-                            .clone()
-                            .with(Color::White)
-                            .attribute(Attribute::Bold)
-                    ),
-                )
-                .unwrap();
-                column_number += token_string.len() as u16;
-            }
-            FormatType::BulletItalic => {
-                column_number = 4;
-                let bullet_string = format!("- {token_string}");
-                queue!(
-                    stdout,
-                    cursor::MoveTo(
-                        get_column_number(&mut row_number, &mut column_number),
-                        row_number
-                    ),
-                    PrintStyledContent(
-                        bullet_string
-                            .clone()
-                            .with(Color::White)
-                            .attribute(Attribute::Italic)
-                    ),
-                )
-                .unwrap();
-                column_number += bullet_string.len() as u16;
-            }
-
-            FormatType::WikiLink => {
-                queue!(
-                    stdout,
-                    cursor::MoveTo(
-                        get_column_number(&mut row_number, &mut column_number),
-                        row_number
-                    ),
-                    PrintStyledContent(
-                        token_string
-                            .clone()
-                            .with(Color::Blue)
-                            .attribute(Attribute::Bold)
-                    ),
-                )
-                .unwrap();
-                column_number += token_string.len() as u16;
-            }
-            // FormatType::Citation => todo!(),
-            // FormatType::YearSpan => todo!(),
-            // FormatType::CodeSnippet => todo!(),
-            // FormatType::PostNominal => {}
-            // FormatType::BlockQuote => todo!(),
-            // FormatType::BulletPoint => todo!(),
-            // FormatType::ShortDescription => todo!(),
-            _ => {}
-        }
-    }
-    stdout.flush().unwrap();
-    thread::sleep(Duration::from_secs(60));
-    execute!(stdout, LeaveAlternateScreen).unwrap();
-}
-
-fn get_column_number(row_number: &mut u16, column_number: &mut u16) -> u16 {
-    let (columns, _) = size().unwrap();
-    let initial_column_number = *column_number;
-    if *column_number >= columns {
-        *column_number = 0;
-        *row_number += 1;
-    }
-
-    initial_column_number % columns
+    Ok(tokens)
 }
