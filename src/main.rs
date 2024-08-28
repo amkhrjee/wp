@@ -63,10 +63,8 @@ fn main() {
     let wikipedia_url = url.host_str().unwrap();
 
     let (article_title, raw_text) = get_article(format!("https://{wikipedia_url}/w/api.php?action=query&format=json&prop=revisions&titles={url_title}&formatversion=2&rvprop=content&rvslots=*")).unwrap();
-    println!("Article Title: {article_title}");
-
     // Trimming the fat
-    let slice_index = raw_text.find("'''").unwrap();
+    let slice_index = raw_text.find("\"").unwrap();
     let mut characters: Vec<char> = raw_text[slice_index..].chars().collect();
     characters.pop();
     characters.push('\0');
