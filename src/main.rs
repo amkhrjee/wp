@@ -1,7 +1,18 @@
+use clap::Parser;
 use std::path::PathBuf;
+use url::Url;
 
 use utils::*;
 mod utils;
+
+/// Simple program to greet a person
+#[derive(Parser)]
+#[command(about = "Wikipedia on your terminal.")]
+#[command(version, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    link: String,
+}
 
 #[derive(Debug)]
 enum FormatType {
@@ -38,8 +49,9 @@ impl Token {
 }
 
 fn main() {
-    let test_link = "https://en.wikipedia.org/wiki/Miss_Meyers";
-    let path_buf = PathBuf::from(test_link);
+    let args = Args::parse();
+    let link = args.link;
+    let path_buf = PathBuf::from(&link);
     // well, if we can't get the name, just panic and quit!
     let url_title = path_buf
         .file_name()
@@ -47,7 +59,10 @@ fn main() {
         .to_str()
         .unwrap_or_else(|| panic!("Err: could not get name of article."));
 
-    let (article_title, raw_text) = get_article(format!("https://en.wikipedia.org/w/api.php?action=query&format=json&prop=revisions&titles={url_title}&formatversion=2&rvprop=content&rvslots=*")).unwrap();
+    let url = Url::parse(&link).unwrap();
+    let wikipedia_url = url.host_str().unwrap();
+
+    let (article_title, raw_text) = get_article(format!("https://{wikipedia_url}/w/api.php?action=query&format=json&prop=revisions&titles={url_title}&formatversion=2&rvprop=content&rvslots=*")).unwrap();
     println!("Article Title: {article_title}");
 
     // Trimming the fat
