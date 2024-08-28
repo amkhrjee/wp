@@ -1,5 +1,10 @@
-use clap::Parser;
-use std::path::PathBuf;
+use clap::{builder::PossibleValue, Parser};
+use std::{
+    fs::File,
+    io::Write,
+    os::linux::raw::stat,
+    path::{Path, PathBuf},
+};
 use url::Url;
 
 use utils::*;
@@ -10,8 +15,11 @@ mod utils;
 #[command(about = "Wikipedia on your terminal.")]
 #[command(version, long_about = None)]
 struct Args {
-    #[arg(short, long)]
+    #[arg(short, long, help = "link to the wikipedia article")]
     link: String,
+
+    #[arg(short, long, help = "save to disk", action)]
+    save: bool,
 }
 
 #[derive(Debug)]
@@ -62,27 +70,30 @@ fn main() {
     let url = Url::parse(&link).unwrap();
     let wikipedia_url = url.host_str().unwrap();
 
-    let (article_title, raw_text) = get_article(format!("https://{wikipedia_url}/w/api.php?action=query&format=json&prop=revisions&titles={url_title}&formatversion=2&rvprop=content&rvslots=*")).unwrap();
+    let raw_text = get_article(format!("https://{wikipedia_url}/w/api.php?action=query&format=json&prop=revisions&titles={url_title}&formatversion=2&rvprop=content&rvslots=*")).unwrap();
     // Trimming the fat
     let slice_index = raw_text.find("\"").unwrap();
-    let mut characters: Vec<char> = raw_text[slice_index..].chars().collect();
+    let mut characters: Vec<char> = raw_text[slice_index + 1..].chars().collect();
     characters.pop();
     characters.push('\0');
     let tokens = parse_text(&characters).unwrap();
-    for token in tokens {
-        token.print(&characters);
+    let plaintext = generate_plaintext(&tokens, &characters);
+    if args.save {
+        save_to_disk(&plaintext, &(url_title.to_string() + ".txt"));
+    } else {
+        output_to_stdout(&plaintext);
     }
 }
 
-fn get_article(url: String) -> Result<(String, String), String> {
+fn get_article(url: String) -> Result<(String), String> {
     let response: serde_json::Value = reqwest::blocking::get(url)
         .map_err(|err| format!("Error: Could not fetch article due to {}", err))?
         .json()
         .map_err(|err| format!("Error: JSON conversion failed due to {}", err))?;
-    Ok((
-        response["query"]["pages"][0]["title"].to_string(),
+    Ok(
+        // response["query"]["pages"][0]["title"].to_string(),
         response["query"]["pages"][0]["revisions"][0]["slots"]["main"]["content"].to_string(),
-    ))
+    )
 }
 
 // little utils : move to a separate file
@@ -238,4 +249,50 @@ fn parse_text(characters: &Vec<char>) -> Result<Vec<Token>, String> {
     }
 
     Ok(tokens)
+}
+
+fn generate_plaintext(tokens: &Vec<Token>, characters: &Vec<char>) -> String {
+    let mut plaintext = String::new();
+    let get_text = |token: &Token| {
+        characters[token.start..token.start + token.length]
+            .iter()
+            .collect::<String>()
+    };
+    for token in tokens {
+        match token.format {
+            FormatType::Title
+            | FormatType::Bold
+            | FormatType::Italic
+            | FormatType::PlainWord
+            | FormatType::Subtitle
+            | FormatType::Subsubtitle
+            | FormatType::WikiLink
+            | FormatType::BulletBold
+            | FormatType::BulletItalic
+            | FormatType::InlineQuote => plaintext.push_str(&get_text(token)),
+
+            FormatType::Space => plaintext.push(' '),
+            FormatType::NewLine => plaintext.push('\n'),
+        }
+    }
+    plaintext.trim().to_string()
+}
+
+fn output_to_stdout(plaintext_string: &str) {
+    println!("{}", plaintext_string);
+}
+
+fn save_to_disk(plaintext_string: &str, article_title: &str) {
+    let path = Path::new(article_title);
+
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("Error: Couldn't create {}: {}", path.display(), why),
+        Ok(file) => file,
+    };
+
+    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
+    match file.write_all(plaintext_string.as_bytes()) {
+        Err(why) => panic!("Error: Couldn't write to {}: {}", path.display(), why),
+        Ok(_) => println!("Saved to {}", path.display()),
+    }
 }
