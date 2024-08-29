@@ -1,9 +1,15 @@
 [package]
 name = "wp"
+license = "GPLv3"
 version = "0.1.4"
+description = "Wikipedia tools on your terminal."
 edition = "2021"
+authors = ["Aniruddha Mukherjee <amkhrjee@gmail.com>"]
+readme = "readme.md"
+repository = "https://github.com/amkhrjee/wp"
+keywords = ["wikipedia", "download", "data", "tui", "cli"]
+categories = ["command-line-utilities"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap = { version = "4.5.16", features = ["derive"] }
