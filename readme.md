@@ -21,7 +21,7 @@ When bulk downloading, the `--save` flag is automatically added.
 
 ### How to get `wp`
 
-Checkout the Releases page and download the binary from the latest  release for your machine. Currently only linux builds are available.
+Checkout the Releases page and download the binary from the latest release for your machine. Only 64-bit binaries for Windows and Linux systems are available for now. Feel free to build from source for your architecture with `cargo build --release`.
 
 ## Future goals
 
