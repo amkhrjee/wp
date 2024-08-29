@@ -17,6 +17,8 @@ The `--save` flag saves the article to disk rather than outputting to stdout.
 
 For bulk downloading from multiple links, create a file with one link per line.
 
+When bulk downloading, the `--save` flag is automatically added.
+
 ### How to get `wp`
 
 Checkout the Releases page and download the binary from the latest  release for your machine. Currently only linux builds are available.
