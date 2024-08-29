@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::path::PathBuf;
+use std::{hash::DefaultHasher, path::PathBuf};
 use url::Url;
 
 use utils::*;
@@ -62,7 +62,8 @@ fn main() {
     let tokens = parse_text(&characters).unwrap();
     let plaintext = generate_plaintext(&tokens, &characters);
     if args.save {
-        save_to_disk(&plaintext, &(url_title.to_string() + ".txt"));
+        let mut hasher = DefaultHasher::new();
+        save_to_disk(&plaintext, url_title, &mut hasher);
     } else {
         output_to_stdout(&plaintext);
     }

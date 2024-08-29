@@ -1,4 +1,9 @@
-use std::{fs::File, io::Write, path::Path};
+use std::{
+    fs::File,
+    hash::{Hash, Hasher},
+    io::Write,
+    path::Path,
+};
 
 use crate::{FormatType, Token};
 
@@ -72,8 +77,11 @@ pub fn output_to_stdout(plaintext_string: &str) {
     println!("{}", plaintext_string);
 }
 
-pub fn save_to_disk(plaintext_string: &str, article_title: &str) {
-    let path = Path::new(article_title);
+pub fn save_to_disk(plaintext_string: &str, article_title: &str, hasher: &mut impl Hasher) {
+    article_title.hash(hasher);
+    let hash = hasher.finish();
+    let hash = format!("{:x}.txt", hash);
+    let path = Path::new(&hash);
 
     let mut file = match File::create(&path) {
         Err(why) => panic!("Error: Couldn't create {}: {}", path.display(), why),
@@ -82,6 +90,6 @@ pub fn save_to_disk(plaintext_string: &str, article_title: &str) {
 
     match file.write_all(plaintext_string.as_bytes()) {
         Err(why) => panic!("Error: Couldn't write to {}: {}", path.display(), why),
-        Ok(_) => println!("Saved to {}", path.display()),
+        Ok(_) => println!("\x1B[32mSaved to {}\x1B[0m", path.display()),
     }
 }
