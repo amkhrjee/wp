@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     hash::{Hash, Hasher},
-    io::Write,
+    io::{self, BufRead, Write},
     path::Path,
 };
 
@@ -77,7 +77,12 @@ pub fn output_to_stdout(plaintext_string: &str) {
     println!("{}", plaintext_string);
 }
 
-pub fn save_to_disk(plaintext_string: &str, article_title: &str, hasher: &mut impl Hasher) {
+pub fn save_to_disk(
+    plaintext_string: &str,
+    article_title: &str,
+    hasher: &mut impl Hasher,
+    is_bulk: bool,
+) {
     article_title.hash(hasher);
     let hash = hasher.finish();
     let hash = format!("{:x}.txt", hash);
@@ -90,6 +95,19 @@ pub fn save_to_disk(plaintext_string: &str, article_title: &str, hasher: &mut im
 
     match file.write_all(plaintext_string.as_bytes()) {
         Err(why) => panic!("Error: Couldn't write to {}: {}", path.display(), why),
-        Ok(_) => println!("\x1B[32mSaved to {}\x1B[0m", path.display()),
+        Ok(_) => {
+            if !is_bulk {
+                println!("\x1B[32mSaved to {}\x1B[0m", path.display())
+            }
+        }
     }
+}
+
+// Stolen straight from Rust by Examples :P
+pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
 }
