@@ -1,5 +1,6 @@
 import argparse
 import os
+import subprocess
 from urllib.parse import urlparse
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -56,6 +57,12 @@ parser.add_argument(
         "ta",
     ],
     help="Choose the language for the wikipedia links.",
+)
+
+parser.add_argument(
+    "--save",
+    action="store_true",
+    help="Save all articles from the selcted language to disk.",
 )
 
 args = parser.parse_args()
@@ -135,15 +142,29 @@ while len(next_batch_link) != 0:
 print("✅ All links saved.")
 
 # Save to zip
-print("🗃️ Zipping up all the links...")
-with tqdm(total=batch_count) as pb:
-    with ZipFile(f"{args.lang}.zip", "w", ZIP_DEFLATED) as zip_file:
-        for file in os.listdir("./"):
-            if file.endswith(".links"):
-                file_path = os.path.join("./", file)
-                zip_file.write(file_path, file)
-                os.remove(file_path)
-                pb.update(1)
+if not args.save:
+    print("🗃️ Zipping up all the links...")
+    with tqdm(total=batch_count) as pb:
+        with ZipFile(f"{args.lang}.zip", "w", ZIP_DEFLATED) as zip_file:
+            for file in os.listdir("./"):
+                if file.endswith(".links"):
+                    file_path = os.path.join("./", file)
+                    zip_file.write(file_path, file)
+                    os.remove(file_path)
+                    pb.update(1)
 
 print("📊 Total batches done: ", batch_count)
 print("🔗 Total links saved: ", links_count)
+
+if args.save:
+    print("⚡ Proceeding with the downloads...")
+    for file in os.listdir("./"):
+        if file.endswith(".links"):
+            file_path = os.path.join("./", file)
+            zip_file.write(file_path, file)
+            result = subprocess.run(
+                ["./wp", "--link", file_path], capture_output=True, text=True
+            )
+            print(result.stdout)
+
+# os.remove(file_path)
