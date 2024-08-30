@@ -5,6 +5,8 @@ use std::{
     path::Path,
 };
 
+use regex::Regex;
+
 use crate::{FormatType, Token};
 
 pub fn advance(text: &Vec<char>, current: &mut usize) -> char {
@@ -53,6 +55,7 @@ pub fn generate_plaintext(tokens: &Vec<Token>, characters: &Vec<char>) -> String
             .iter()
             .collect::<String>()
     };
+    // The parser is a hot pile of mess and needs to be rewritten asap
     for token in tokens {
         match token.format {
             FormatType::Title
@@ -62,24 +65,18 @@ pub fn generate_plaintext(tokens: &Vec<Token>, characters: &Vec<char>) -> String
             | FormatType::Subsubtitle
             | FormatType::WikiLink
             | FormatType::BulletBold
-            | FormatType::BulletItalic
-            | FormatType::InlineQuote => plaintext.push_str(&get_text(token)),
-
-            FormatType::Italic => {
-                let raw_token_text = &get_text(token);
-                if raw_token_text.find("[[").is_some() && raw_token_text.find("]]").is_some() {
-                    match raw_token_text.find("|") {
-                        Some(index) => plaintext.push_str(&raw_token_text[2..index]),
-                        None => plaintext.push_str(&raw_token_text[2..token.length - 2]),
-                    }
-                } else {
-                    plaintext.push_str(&raw_token_text)
-                }
+            | FormatType::BulletItalic => plaintext.push_str(&get_text(token)),
+            FormatType::Italic | FormatType::InlineQuote => {
+                let text_with_artifact = &get_text(token).replace("[[", "");
+                let regex_pattern = Regex::new(r"\|.*?\]\]").unwrap();
+                let cleaned_text = regex_pattern
+                    .replace_all(text_with_artifact, "")
+                    .to_string();
+                plaintext.push_str(&cleaned_text.replace("]]", ""));
             }
             FormatType::Space => plaintext.push(' '),
             FormatType::NewLine => plaintext.push('\n'),
         }
-        // println!("{:?}: {}", token.format, &get_text(token));
     }
     plaintext.trim().to_string()
 }
