@@ -34,7 +34,7 @@ If you want to scrape *all* of wikipedia into plain text files for any particula
 
 ### For `bash`, `zsh` or similar
 ```
-curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o wp && chmod +x wp && curl -L https://github.com/amkhrjee/wp/releases/latest/download/downloader -o wp && chmod +x downloader
+curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o wp && chmod +x wp && curl -L https://github.com/amkhrjee/wp/releases/latest/download/downloader -o downloader && chmod +x downloader
 ```
 ### For Windows Powershell (both legacy and new `pwsh`)
 ```

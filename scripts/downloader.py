@@ -6,7 +6,6 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import requests
 from bs4 import BeautifulSoup
-from tqdm import tqdm
 
 
 def get_links(parsed_html, main_url, batch_count):
@@ -144,14 +143,12 @@ print("✅ All links saved.")
 # Save to zip
 if not args.save:
     print("🗃️ Zipping up all the links...")
-    with tqdm(total=batch_count) as pb:
-        with ZipFile(f"{args.lang}.zip", "w", ZIP_DEFLATED) as zip_file:
-            for file in os.listdir("./"):
-                if file.endswith(".links"):
-                    file_path = os.path.join("./", file)
-                    zip_file.write(file_path, file)
-                    os.remove(file_path)
-                    pb.update(1)
+    with ZipFile(f"{args.lang}.zip", "w", ZIP_DEFLATED) as zip_file:
+        for file in os.listdir("./"):
+            if file.endswith(".links"):
+                file_path = os.path.join("./", file)
+                zip_file.write(file_path, file)
+                os.remove(file_path)
 
 print("📊 Total batches done: ", batch_count)
 print("🔗 Total links saved: ", links_count)
