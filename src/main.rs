@@ -22,7 +22,7 @@ struct Args {
     )]
     link: Option<String>,
     #[arg(short, long, help = "Save articles to disk", action)]
-    save: Option<bool>,
+    save: bool,
 
     #[arg(long, value_parser = ["as", "hi", "bn", "bh", "ne", "or", "te", "gu", "kn", "mr", "pi", "sa", "ta"], help="Choose Wikipedia labguage edition for bulk download")]
     lang: Option<String>,
@@ -43,13 +43,11 @@ fn main() {
         // Check if the link is a file or a url
         if Url::parse(&link).is_ok() {
             let (plaintext, url_title) = plaintext_from_link(&link);
-            if args.save.is_some() {
-                if args.save.unwrap() {
-                    let mut hasher = DefaultHasher::new();
-                    save_to_disk(&plaintext, &url_title, &mut hasher, false);
-                } else {
-                    output_to_stdout(&plaintext);
-                }
+            if args.save {
+                let mut hasher = DefaultHasher::new();
+                save_to_disk(&plaintext, &url_title, &mut hasher, false);
+            } else {
+                output_to_stdout(&plaintext);
             }
         } else if Path::new(&link).exists() {
             download_from_file(&link);

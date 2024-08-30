@@ -24,7 +24,7 @@ fn get_links(parsed_html: &Html, main_url: &str, batch_count: usize, lang: &str)
     println!("⚡ Starting batch {}", batch_count);
 
     let ul_selector = Selector::parse("ul.mw-allpages-chunk").unwrap();
-    let li_selector = Selector::parse("li").unwrap();
+    let li_selector = Selector::parse("li:not([class])").unwrap();
     let a_selector = Selector::parse("a[href]").unwrap();
 
     let links: Vec<String> = parsed_html
