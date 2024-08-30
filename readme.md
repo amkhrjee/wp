@@ -33,7 +33,7 @@ Raise an issue if you would like support for any other language.
 
 ### For `bash`, `zsh` or similar
 ```
-curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o /usr/local/bin/wp && sudo chmod +x /usr/local/bin/wp 
+sudo curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o /usr/local/bin/wp && sudo chmod +x /usr/local/bin/wp 
 ```
 If you don't have `sudo`, simply download to the directory you have access to:
 
