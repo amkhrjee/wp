@@ -57,7 +57,6 @@ pub fn generate_plaintext(tokens: &Vec<Token>, characters: &Vec<char>) -> String
         match token.format {
             FormatType::Title
             | FormatType::Bold
-            | FormatType::Italic
             | FormatType::PlainWord
             | FormatType::Subtitle
             | FormatType::Subsubtitle
@@ -66,9 +65,21 @@ pub fn generate_plaintext(tokens: &Vec<Token>, characters: &Vec<char>) -> String
             | FormatType::BulletItalic
             | FormatType::InlineQuote => plaintext.push_str(&get_text(token)),
 
+            FormatType::Italic => {
+                let raw_token_text = &get_text(token);
+                if raw_token_text.find("[[").is_some() && raw_token_text.find("]]").is_some() {
+                    match raw_token_text.find("|") {
+                        Some(index) => plaintext.push_str(&raw_token_text[2..index]),
+                        None => plaintext.push_str(&raw_token_text[2..token.length - 2]),
+                    }
+                } else {
+                    plaintext.push_str(&raw_token_text)
+                }
+            }
             FormatType::Space => plaintext.push(' '),
             FormatType::NewLine => plaintext.push('\n'),
         }
+        // println!("{:?}: {}", token.format, &get_text(token));
     }
     plaintext.trim().to_string()
 }
