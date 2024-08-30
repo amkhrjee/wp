@@ -8,7 +8,37 @@ This projects aims to be the ultimate tool to view and download wikipedia articl
 -  Save wikipedia articles to disk as plain text.
 - Bulk download all of wikipedia for any particular language.
 
-Currently supported languages for bulk download: Assamese, Bengali, Hindi, Bhojpuri, Marathi, Nepali, Oriya, Telugu, Gujarati, Kannada, Punjabi, Sanskrit, Tamil & Pali.
+Currently supported languages for bulk download are: 
+<div style="display: flex; gap: 15px;">
+<div>
+
+| Languages | Codes |
+|-----------|------|
+|Assamese | `as` |
+| Bengali | `bn` |
+| Bhojpuri | `bh` |
+| Gujarati | `gu` |
+| Hindi | `hi` |
+| Kannada | `kn` |
+| Marathi | `mr` |
+
+</div>
+
+<div>
+
+| Languages | Codes |
+|-----------|------|
+| Nepali | `ne` |
+| Oriya | `or` |
+| Pali | `pi` |
+| Punjabi | `pn` |
+|Sanskrit | `sa` |
+| Tamil | `ta` |
+| Telugu | `te` | 
+
+</div>
+</div>
+
 
 Raise an issue if you would like support for any other language.
 

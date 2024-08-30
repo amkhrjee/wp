@@ -158,7 +158,6 @@ if args.save:
     for file in os.listdir("./"):
         if file.endswith(".links"):
             file_path = os.path.join("./", file)
-            zip_file.write(file_path, file)
             result = subprocess.run(
                 [os.path.join(".", "wp"), "--link", file_path],
                 capture_output=True,
