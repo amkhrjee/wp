@@ -163,8 +163,8 @@ if args.save:
             file_path = os.path.join("./", file)
             zip_file.write(file_path, file)
             result = subprocess.run(
-                ["./wp", "--link", file_path], capture_output=True, text=True
+                [os.path.join(".", "wp"), "--link", file_path],
+                capture_output=True,
+                text=True,
             )
             print(result.stdout)
-
-# os.remove(file_path)
