@@ -36,7 +36,7 @@ fn main() {
     if args.lang.is_some() {
         bulk_download_or_save_links(&args.lang.unwrap(), args.links_only)
             .expect("Failed to download articles.");
-    } else {
+    } else if args.link.is_some() {
         let link = args
             .link
             .expect("Must provide link if not bulk downloading.");
@@ -56,5 +56,7 @@ fn main() {
         } else {
             println!("\x1b[31m⚠️ Link provided should be either a URL or a valid file path.\x1b[0m")
         }
+    } else {
+        println!("\x1b[31m⚠️ Invalid arguments. Type wp --help to see all set of options.\x1b[0m")
     }
 }
