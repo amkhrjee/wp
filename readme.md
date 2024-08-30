@@ -33,13 +33,18 @@ Raise an issue if you would like support for any other language.
 
 ### For `bash`, `zsh` or similar
 ```
-curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o /usr/local/bin/wp && chmod +x /usr/local/bin/wp 
+curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o /usr/local/bin/wp && sudo chmod +x /usr/local/bin/wp 
 ```
-### For Windows Powershell (both legacy and new `pwsh`)
+If you don't have `sudo`, simply download to the directory you have access to:
+
+```
+curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o wp && chmod +x wp 
+```
+
+### For Windows Powershell (both legacy and the new `pwsh`)
 ```
 Invoke-WebRequest -Uri https://github.com/amkhrjee/wp/releases/latest/download/wp.exe -OutFile wp.exe;
 ```
-
 
 ## How to use `wp` to parse wikipedia articles
 
