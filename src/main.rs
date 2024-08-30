@@ -52,7 +52,7 @@ fn main() {
         )));
 
         println!("🔍 Total links found: {}", total_count);
-        println!("🗃️ Downloading articles in bulk...");
+        println!("🗃️ Downloading articles in bulk...\n");
         for link in list_of_links {
             let bar = Arc::clone(&bar);
             let handle = thread::spawn(move || {

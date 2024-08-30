@@ -1,8 +1,11 @@
 import argparse
+import os
 from urllib.parse import urlparse
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import requests
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 
 def get_links(parsed_html, main_url, batch_count):
@@ -63,10 +66,8 @@ main_url = urlparse(start_url).netloc
 response = requests.get(start_url)
 html = response.text
 parsed_html = BeautifulSoup(html, "html.parser")
-print("💭 Links will be saved to your current directory.")
-print(
-    "💭 You can safely delete them after downloading the articles or choose to keep them."
-)
+print("💭 Links will be saved to your current directory as zip.")
+
 print("")
 links_count += get_links(parsed_html, main_url, batch_count)
 print("⚡ Starting next batch...")
@@ -95,5 +96,17 @@ while len(next_batch_link) != 0:
         break
 
 print("✅ All links saved.")
+
+# Save to zip
+print("🗃️ Zipping up all the links...")
+with tqdm(total=batch_count) as pb:
+    with ZipFile(f"{args.lang}.zip", "w", ZIP_DEFLATED) as zip_file:
+        for file in os.listdir("./"):
+            if file.endswith(".links"):
+                file_path = os.path.join("./", file)
+                zip_file.write(file_path, file)
+                os.remove(file_path)
+                pb.update(1)
+
 print("📊 Total batches done: ", batch_count)
 print("🔗 Total links saved: ", links_count)
