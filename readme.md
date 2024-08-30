@@ -9,8 +9,6 @@ This projects aims to be the ultimate tool to view and download wikipedia articl
 - Bulk download all of wikipedia for any particular language.
 
 Currently supported languages for bulk download are: 
-<div style="display: flex; gap: 15px;">
-<div>
 
 | Languages | Codes |
 |-----------|------|
@@ -21,13 +19,6 @@ Currently supported languages for bulk download are:
 | Hindi | `hi` |
 | Kannada | `kn` |
 | Marathi | `mr` |
-
-</div>
-
-<div>
-
-| Languages | Codes |
-|-----------|------|
 | Nepali | `ne` |
 | Oriya | `or` |
 | Pali | `pi` |
@@ -36,16 +27,24 @@ Currently supported languages for bulk download are:
 | Tamil | `ta` |
 | Telugu | `te` | 
 
-</div>
-</div>
-
-
 Raise an issue if you would like support for any other language.
 
-## How to use `wp`
+## How to download `wp`
+
+### For `bash`, `zsh` or similar
+```
+curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o /usr/local/bin/wp && chmod +x /usr/local/bin/wp 
+```
+### For Windows Powershell (both legacy and new `pwsh`)
+```
+Invoke-WebRequest -Uri https://github.com/amkhrjee/wp/releases/latest/download/wp.exe -OutFile wp.exe;
+```
+
+
+## How to use `wp` to parse wikipedia articles
 
 ```
-wp --link <LINK_TO_THE_ARTICLE OR THE FILE NAME> [--save]
+wp --link <LINK_TO_THE_ARTICLE OR THE FILE NAME> [--save] 
 ```
 
 The `--save` flag saves the article to disk rather than outputting to stdout.
@@ -54,36 +53,20 @@ For bulk downloading from multiple links, create a file with one link per line.
 
 When bulk downloading, the `--save` flag is automatically added.
 
-## How to get `wp`
-
-Checkout the Releases page and download the binary from the latest release for your machine. Only 64-bit binaries for Windows and Linux systems are available for now. Feel free to build from source for your architecture with `cargo build --release`.
 
 ## Scraping wikipedia
 
 If you want to scrape *all* of wikipedia into plain text files for any particular language, paste the following script in your terminal:
 
-### For `bash`, `zsh` or similar
 ```
-curl -L https://github.com/amkhrjee/wp/releases/latest/download/wp -o wp && chmod +x wp && curl -L https://github.com/amkhrjee/wp/releases/latest/download/downloader -o downloader && chmod +x downloader
+wp --lang <LANGUAGE_CODE> [--links-only]
 ```
-### For Windows Powershell (both legacy and new `pwsh`)
-```
-Invoke-WebRequest -Uri https://github.com/amkhrjee/wp/releases/latest/download/wp.exe -OutFile wp.exe;
-Invoke-WebRequest -Uri https://github.com/amkhrjee/wp/releases/latest/download/downloader.exe -OutFile downloader.exe;
-```
+Setting the `--links-only` flag will only save the links aggregated into a zip file, without downloading the actual contents.
 
-Next,
-
+On Windows, this should be
 ```
-./downloader --lang <YOUR_CHOICE> --save
+.\wp.exe --lang <LANGUAGE_CODE> [--links-only]
 ```
-If you're on  Windows, do this instead:
-
-```
-.\downloader.exe --lang <YOUR_CHOICE> --save
-```
-
-> **Note:** Without the `--save` flag, the `downloader` will ony aggregate the links to articles in a zip file.
 
 ## Future goals
 
@@ -91,8 +74,6 @@ If you're on  Windows, do this instead:
 - Display articles with a TUI (was available till commit [`5a3b`](https://github.com/amkhrjee/wp/tree/5a3b0c3b85e46fa6cd933af5d3ea36b3ac1d1a0d)).
 - Release as a crate on [crates.io](https://crates.io)
 - Distribute via package managers
-
-
 
 This is a *very* alpha software, so use at your own risk (. ❛ ᴗ ❛.)
 
