@@ -1,76 +1,60 @@
 use clap::Parser;
-use std::{
-    hash::DefaultHasher,
-    path::Path,
-    sync::{Arc, Mutex},
-    thread::{self},
-};
+use scraper::bulk_download_or_save_links;
+use std::{hash::DefaultHasher, path::Path};
 use url::Url;
 
 use core::*;
 use utils::*;
 mod core;
+mod scraper;
 mod utils;
 
-/// Simple program to greet a person
 #[derive(Parser)]
-#[command(about = "Wikipedia on your terminal.")]
+#[command(
+    about = "Wikipedia on your terminal. Made by Aniruddha <amkhrjee@gmail.com>. Licensed under GPLv3."
+)]
 #[command(version, long_about = None)]
 struct Args {
-    #[arg(short, long, help = "link to the wikipedia article")]
-    link: String,
+    #[arg(
+        short,
+        long,
+        help = "Link to the wikipedia article or Path to file with links"
+    )]
+    link: Option<String>,
+    #[arg(short, long, help = "Save articles to disk", action)]
+    save: Option<bool>,
 
-    #[arg(short, long, help = "save to disk", action)]
-    save: bool,
+    #[arg(long, value_parser = ["as", "hi", "bn", "bh", "ne", "or", "te", "gu", "kn", "mr", "pi", "sa", "ta"], help="Choose Wikipedia labguage edition for bulk download")]
+    lang: Option<String>,
+
+    #[arg(long, help = "Only save the aggregated links to articles.")]
+    links_only: bool,
 }
 
 fn main() {
     let args = Args::parse();
-    let link = args.link;
-    // Check if the link is a file or a url
-    if Url::parse(&link).is_ok() {
-        let (plaintext, url_title) = plaintext_from_link(&link);
-        if args.save {
-            let mut hasher = DefaultHasher::new();
-            save_to_disk(&plaintext, &url_title, &mut hasher, false);
-        } else {
-            output_to_stdout(&plaintext);
-        }
-    } else if Path::new(&link).exists() {
-        use indicatif::ProgressBar;
-        let mut list_of_links = vec![];
-        if let Ok(lines) = read_lines(&link) {
-            for line in lines.flatten() {
-                list_of_links.push(line.trim().to_string());
-            }
-        }
-        let mut handles = vec![];
-        let total_count = &list_of_links.len();
-
-        let bar = Arc::new(Mutex::new(ProgressBar::new(
-            (*total_count).try_into().unwrap(),
-        )));
-
-        println!("🔍 Total links found: {}", total_count);
-        println!("🗃️ Downloading articles in bulk...\n");
-        for link in list_of_links {
-            let bar = Arc::clone(&bar);
-            let handle = thread::spawn(move || {
-                let (plaintext, url_title) = plaintext_from_link(&link);
-                let mut hasher = DefaultHasher::new();
-                save_to_disk(&plaintext, &url_title, &mut hasher, true);
-                bar.lock().unwrap().inc(1);
-            });
-            handles.push(handle);
-        }
-        for handle in handles {
-            handle.join().unwrap();
-        }
-
-        bar.lock().unwrap().finish_and_clear();
-
-        println!("\n✅ Download complete.");
+    if args.lang.is_some() {
+        bulk_download_or_save_links(&args.lang.unwrap(), args.links_only)
+            .expect("Failed to download articles.");
     } else {
-        println!("\x1b[31m⚠️ Link provided should be either a URL or a valid file path.\x1b[0m")
+        let link = args
+            .link
+            .expect("Must provide link if not bulk downloading.");
+        // Check if the link is a file or a url
+        if Url::parse(&link).is_ok() {
+            let (plaintext, url_title) = plaintext_from_link(&link);
+            if args.save.is_some() {
+                if args.save.unwrap() {
+                    let mut hasher = DefaultHasher::new();
+                    save_to_disk(&plaintext, &url_title, &mut hasher, false);
+                } else {
+                    output_to_stdout(&plaintext);
+                }
+            }
+        } else if Path::new(&link).exists() {
+            download_from_file(&link);
+        } else {
+            println!("\x1b[31m⚠️ Link provided should be either a URL or a valid file path.\x1b[0m")
+        }
     }
 }

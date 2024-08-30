@@ -1,13 +1,15 @@
 use std::{
     fs::File,
-    hash::{Hash, Hasher},
+    hash::{DefaultHasher, Hash, Hasher},
     io::{self, BufRead, Write},
     path::Path,
+    sync::{Arc, Mutex},
+    thread::spawn,
 };
 
 use regex::Regex;
 
-use crate::{FormatType, Token};
+use crate::{plaintext_from_link, FormatType, Token};
 
 pub fn advance(text: &Vec<char>, current: &mut usize) -> char {
     *current += 1;
@@ -118,4 +120,40 @@ where
 {
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
+}
+
+pub fn download_from_file(link: &str) {
+    use indicatif::ProgressBar;
+    let mut list_of_links = vec![];
+    if let Ok(lines) = read_lines(link) {
+        for line in lines.flatten() {
+            list_of_links.push(line.trim().to_string());
+        }
+    }
+    let mut handles = vec![];
+    let total_count = &list_of_links.len();
+
+    let bar = Arc::new(Mutex::new(ProgressBar::new(
+        (*total_count).try_into().unwrap(),
+    )));
+
+    println!("🔍 Total links found: {}", total_count);
+    println!("🗃️ Downloading articles in bulk...\n");
+    for link in list_of_links {
+        let bar = Arc::clone(&bar);
+        let handle = spawn(move || {
+            let (plaintext, url_title) = plaintext_from_link(&link);
+            let mut hasher = DefaultHasher::new();
+            save_to_disk(&plaintext, &url_title, &mut hasher, true);
+            bar.lock().unwrap().inc(1);
+        });
+        handles.push(handle);
+    }
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    bar.lock().unwrap().finish_and_clear();
+
+    println!("\n✅ Download complete.");
 }

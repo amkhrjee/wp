@@ -16,5 +16,7 @@ clap = { version = "4.5.16", features = ["derive"] }
 indicatif = "0.17.8"
 regex = "1.10.6"
 reqwest = { version = "0.12", features = ["json", "blocking"] }
+scraper = "0.20.0"
 serde_json = "1.0.115"
 url = "2.5.2"
+zip = "2.2.0"
