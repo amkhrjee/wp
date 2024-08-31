@@ -55,9 +55,9 @@ wp --link <LINK_TO_THE_ARTICLE OR THE FILE NAME> [--save]
 
 The `--save` flag saves the article to disk rather than outputting to stdout.
 
-For bulk downloading from multiple links, create a file with one link per line.
+For downloading from multiple links at once, create a file with one link per line.
 
-When bulk downloading, the `--save` flag is automatically added.
+In this case, the `--save` flag is automatically added.
 
 
 ## Scraping wikipedia
@@ -73,6 +73,8 @@ On Windows, this should be
 ```
 .\wp.exe --lang <LANGUAGE_CODE> [--links-only]
 ```
+
+> Archives for a few languages downloaded with this tool are maintanied on [Dropbox](https://www.dropbox.com/scl/fo/u93co50rha4263fpw71dz/AKMviTRu_AMWCWvSv9n9snU?rlkey=okazdak9rued8b6mmhthkfg07&st=am5scwho&dl=0).
 
 ## Future goals
 
