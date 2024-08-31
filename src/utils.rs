@@ -167,7 +167,7 @@ pub fn download_from_file(link: &str) -> Option<bool> {
     for handle in handles {
         match handle.join() {
             Ok(_) => (),
-            Err(err) => println!("Thread returned an error: {:?}", err),
+            Err(_) => continue,
         }
     }
     bar.lock().unwrap().finish_and_clear();
