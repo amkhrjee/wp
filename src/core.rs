@@ -65,13 +65,15 @@ pub fn plaintext_from_link(link: &str) -> (String, String) {
 
     // Trimming out the references
     let re = Regex::new(r"<ref>.*?</ref>").unwrap();
-    let raw_text = re.replace_all(&raw_text, "").to_string();
+    let mut raw_text = re.replace_all(&raw_text, "").to_string();
 
-    // Trimming out reference for now
-    let raw_text = regex::Regex::new(r"== References ==.*")
-        .unwrap()
-        .replace(&raw_text, "")
-        .to_string();
+    if wikipedia_url.contains("en.wiki") {
+        // Trimming out reference for now
+        raw_text = regex::Regex::new(r"== References ==.*")
+            .unwrap()
+            .replace(&raw_text, "")
+            .to_string();
+    }
 
     // Trimming out the squigglies
     let raw_text = remove_nested_braces(&raw_text);
