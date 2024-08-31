@@ -15,6 +15,7 @@ Currently supported languages for bulk download are:
 |Assamese | `as` |
 | Bengali | `bn` |
 | Bhojpuri | `bh` |
+| English | `en` |
 | Gujarati | `gu` |
 | Hindi | `hi` |
 | Kannada | `kn` |
