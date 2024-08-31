@@ -148,9 +148,11 @@ pub fn bulk_download_or_save_links(
                     && entry.path().extension().and_then(|s| s.to_str()) == Some("links")
             })
             .collect();
-
+        let mut batch_count = 0;
         for each_file in files {
             let file_path = each_file.path();
+            batch_count += 1;
+            println!("\x1B[32mDownloading Batch No. {}\x1B[0m", batch_count);
             match download_from_file(file_path.to_str().unwrap()) {
                 Some(_) => continue,
                 None => continue,
