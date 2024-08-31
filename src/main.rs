@@ -45,6 +45,7 @@ fn main() {
             let (plaintext, url_title) = plaintext_from_link(&link);
             if args.save {
                 let mut hasher = DefaultHasher::new();
+
                 save_to_disk(&plaintext, &url_title, &mut hasher, false);
             } else {
                 output_to_stdout(&plaintext);

@@ -82,7 +82,6 @@ pub fn bulk_download_or_save_links(
     let url = Url::parse(start_url)?;
     let main_url = url.host_str().ok_or("Invalid URL")?;
 
-    println!("💭 Links will be saved to your current directory as zip.");
     println!("⚡ Scraping links...");
 
     let mut next_batch_link = start_url.to_string();
@@ -136,6 +135,10 @@ pub fn bulk_download_or_save_links(
     } else {
         // Download straight from the links!
         println!("⚡ Proceeding with the downloads...");
+        match fs::create_dir("wp_downloads") {
+            Ok(()) => println!("Directory created successfully"),
+            Err(err) => println!("Error creating directory: {}", err),
+        }
         let dir_path = Path::new(".");
         let files: Vec<_> = fs::read_dir(dir_path)?
             .filter_map(|entry| entry.ok())
@@ -144,6 +147,7 @@ pub fn bulk_download_or_save_links(
                     && entry.path().extension().and_then(|s| s.to_str()) == Some("links")
             })
             .collect();
+
         for each_file in files {
             let file_path = each_file.path();
             match download_from_file(file_path.to_str().unwrap()) {

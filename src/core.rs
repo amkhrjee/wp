@@ -34,11 +34,9 @@ fn remove_nested_braces(input: &str) -> String {
     let mut chars = input.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '{' && chars.peek() == Some(&'{') {
-            // Skip the next character since we found {{
             chars.next();
             stack += 1;
         } else if c == '}' && chars.peek() == Some(&'}') {
-            // Skip the next character since we found }}
             chars.next();
             if stack > 0 {
                 stack -= 1;
@@ -95,22 +93,24 @@ fn parse_text(characters: &Vec<char>) -> Option<Vec<Token>> {
     let mut current = 0;
     let mut tokens: Vec<Token> = Vec::new();
     let mut is_bullet = false;
-    // const MAX_ITERATIONS = 1000000;
-    println!("Charatcers: {}", characters.len());
+    // Very nutty, bad will have to do for now
+    const MAX_ITERATINS: i32 = 150000;
+    let mut iter_count = 0;
 
-    while current < characters.len() {
+    while current < characters.len() && iter_count < MAX_ITERATINS {
+        iter_count += 1;
         match characters[current] {
             '{' => {
                 // Assuming we can only have three levels of nesting
                 // This is some convoluted shit thanks to wikipedia's format:(
                 current += 2;
-                while advance(characters, &mut current) != '}' {
+                while advance(characters, &mut current, &mut iter_count) != '}' {
                     if characters[current] == '{' {
                         current += 1;
-                        while advance(characters, &mut current) != '}' {
+                        while advance(characters, &mut current, &mut iter_count) != '}' {
                             if characters[current] == '{' {
                                 current += 1;
-                                while advance(characters, &mut current) != '}' {}
+                                while advance(characters, &mut current, &mut iter_count) != '}' {}
                                 current += 1;
                             }
                         }
@@ -123,7 +123,7 @@ fn parse_text(characters: &Vec<char>) -> Option<Vec<Token>> {
                 if peek_ahead(&characters, current) == '\'' {
                     let mut apostrophe_count = 0;
                     let mut format = FormatType::Bold;
-                    while advance(&characters, &mut current) == '\'' {
+                    while advance(&characters, &mut current, &mut iter_count) == '\'' {
                         apostrophe_count += 1;
                     }
                     if apostrophe_count == 2 {
@@ -141,7 +141,7 @@ fn parse_text(characters: &Vec<char>) -> Option<Vec<Token>> {
                     }
                     start = current - 1;
 
-                    while advance(&characters, &mut current) != '\'' {}
+                    while advance(&characters, &mut current, &mut iter_count) != '\'' {}
                     add_token(&mut tokens, start, current, format);
                     current += apostrophe_count - 1;
                 } else {
@@ -156,10 +156,10 @@ fn parse_text(characters: &Vec<char>) -> Option<Vec<Token>> {
                 let mut has_pipe = false;
                 current += 2;
                 start = current;
-                while advance(characters, &mut current) != ']' {
+                while advance(characters, &mut current, &mut iter_count) != ']' {
                     if characters[current] == '[' {
                         has_nesting = true;
-                        while advance(characters, &mut current) != ']' {}
+                        while advance(characters, &mut current, &mut iter_count) != ']' {}
                         current += 1;
                     } else if characters[current] == '|' {
                         has_pipe = true;
@@ -177,14 +177,14 @@ fn parse_text(characters: &Vec<char>) -> Option<Vec<Token>> {
                 add_space(&mut tokens, current);
                 current += 1;
             }
-            '<' => while advance(characters, &mut current) != '>' {},
+            '<' => while advance(characters, &mut current, &mut iter_count) != '>' {},
             '=' => {
                 let mut equals_count = 0;
-                while advance(characters, &mut current) == '=' {
+                while advance(characters, &mut current, &mut iter_count) == '=' {
                     equals_count += 1;
                 }
                 start = current - 1;
-                while advance(characters, &mut current) != '=' {}
+                while advance(characters, &mut current, &mut iter_count) != '=' {}
                 match equals_count {
                     2 => {
                         add_token(&mut tokens, start, current, FormatType::Title);
@@ -208,7 +208,7 @@ fn parse_text(characters: &Vec<char>) -> Option<Vec<Token>> {
                 } else if characters[current] == '"' {
                     current += 1;
                     start = current;
-                    while advance(characters, &mut current) != '\\' {}
+                    while advance(characters, &mut current, &mut iter_count) != '\\' {}
                     add_token(&mut tokens, start, current, FormatType::InlineQuote);
                 }
                 current += 1;

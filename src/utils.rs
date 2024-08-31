@@ -11,12 +11,19 @@ use regex::Regex;
 
 use crate::{plaintext_from_link, FormatType, Token};
 
-pub fn advance(text: &Vec<char>, current: &mut usize) -> char {
-    *current += 1;
-    if *current < text.len() {
-        return text[*current - 1];
+pub fn advance(text: &Vec<char>, current: &mut usize, iter: &mut i32) -> char {
+    let max = 150000;
+    if *iter < max {
+        *iter += 1;
+        *current += 1;
+        if *current < text.len() {
+            return text[*current - 1];
+        }
+        return '\0';
+    } else {
+        panic!("Infinite loop");
+        // exit(1);
     }
-    return '\0';
 }
 
 pub fn add_token(tokens: &mut Vec<Token>, start: usize, current: usize, format: FormatType) {
@@ -96,7 +103,13 @@ pub fn save_to_disk(
     article_title.hash(hasher);
     let hash = hasher.finish();
     let hash = format!("{:x}.txt", hash);
-    let path = Path::new(&hash);
+    let file_path;
+    if is_bulk {
+        file_path = format!("./wp_downloads/{}", hash);
+    } else {
+        file_path = format!("{}", hash);
+    }
+    let path = Path::new(&file_path);
 
     let mut file = match File::create(&path) {
         Err(why) => panic!("Error: Couldn't create {}: {}", path.display(), why),
@@ -138,7 +151,8 @@ pub fn download_from_file(link: &str) -> Option<bool> {
     )));
 
     println!("🔍 Total links found: {}", total_count);
-    println!("🗃️ Downloading articles in bulk...\n");
+    println!("🗃️ Downloading articles in bulk in wp_downlods...\n");
+
     for link in list_of_links {
         let bar = Arc::clone(&bar);
         let handle = spawn(move || {
@@ -149,10 +163,13 @@ pub fn download_from_file(link: &str) -> Option<bool> {
         });
         handles.push(handle);
     }
+    // Just pure evil
     for handle in handles {
-        handle.join().unwrap();
+        match handle.join() {
+            Ok(_) => (),
+            Err(err) => println!("Thread returned an error: {:?}", err),
+        }
     }
-
     bar.lock().unwrap().finish_and_clear();
 
     println!("\n✅ Download complete.");
