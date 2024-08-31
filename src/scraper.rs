@@ -72,6 +72,7 @@ pub fn bulk_download_or_save_links(
         "sa" => "https://sa.wikipedia.org/wiki/%E0%A4%B5%E0%A4%BF%E0%A4%B6%E0%A5%87%E0%A4%B7%E0%A4%83:%E0%A4%B8%E0%A4%B0%E0%A5%8D%E0%A4%B5%E0%A4%AA%E0%A5%83%E0%A4%B7%E0%A5%8D%E0%A4%A0%E0%A4%BE%E0%A4%A8%E0%A4%BF?from=%E0%A4%85&to=&namespace=0",
         "ta" => "https://ta.wikipedia.org/wiki/%E0%AE%9A%E0%AE%BF%E0%AE%B1%E0%AE%AA%E0%AF%8D%E0%AE%AA%E0%AF%81:AllPages?from=%E0%AE%85&to=&namespace=0",
         "pa" => "https://pa.wikipedia.org/wiki/%E0%A8%96%E0%A8%BC%E0%A8%BE%E0%A8%B8:%E0%A8%B8%E0%A8%BE%E0%A8%B0%E0%A9%87_%E0%A8%B8%E0%A8%AB%E0%A8%BC%E0%A9%87?from=%E0%A8%85&to=&namespace=0",
+        "en" => "https://en.wikipedia.org/wiki/Special:AllPages?from=A&to=&namespace=0",
         _ => return Err("Unsupported language".into()),
     };
 
