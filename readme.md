@@ -81,6 +81,10 @@ On Windows, this should be
 - Release as a crate on [crates.io](https://crates.io)
 - Distribute via package managers
 
-This is a *very* alpha software, so use at your own risk (. ❛ ᴗ ❛.)
+## Few words of caution
 
-PRs are welcome. 
+Since I made this project as a quick-n-dirty thing to aggregate data for my purpopses, it goes without saying that the code is less than ideal. It's full of hacks and dirty patches to get things going. If you'd like me to spend more time on this project, consider starring or donating to the project.
+
+Although in my testing, bulk downloads for all the listed languages work, your mileage may vary.
+
+PRs are welcome and encouraged. Feel free to raise issues.

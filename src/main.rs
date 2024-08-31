@@ -24,7 +24,7 @@ struct Args {
     #[arg(short, long, help = "Save articles to disk", action)]
     save: bool,
 
-    #[arg(long, value_parser = ["as", "hi", "bn", "bh", "ne", "or", "te", "gu", "kn", "mr", "pi", "sa", "ta"], help="Choose Wikipedia labguage edition for bulk download")]
+    #[arg(long, value_parser = ["as", "en", "hi", "bn", "bh", "ne", "or", "te", "gu", "kn", "mr", "pi", "sa", "ta"], help="Choose Wikipedia labguage edition for bulk download")]
     lang: Option<String>,
 
     #[arg(long, help = "Only save the aggregated links to articles.")]
