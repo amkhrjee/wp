@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use regex::Regex;
 use url::Url;
 
 use crate::{add_new_line, add_space, add_token, advance, generate_plaintext, peek_ahead};
@@ -26,6 +27,30 @@ pub struct Token {
     pub format: FormatType,
 }
 
+fn remove_nested_braces(input: &str) -> String {
+    let mut result = String::new();
+    let mut stack = 0;
+
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '{' && chars.peek() == Some(&'{') {
+            // Skip the next character since we found {{
+            chars.next();
+            stack += 1;
+        } else if c == '}' && chars.peek() == Some(&'}') {
+            // Skip the next character since we found }}
+            chars.next();
+            if stack > 0 {
+                stack -= 1;
+            }
+        } else if stack == 0 {
+            result.push(c);
+        }
+    }
+
+    result
+}
+
 pub fn plaintext_from_link(link: &str) -> (String, String) {
     let path_buf = PathBuf::from(link);
     // well, if we can't get the name, just panic and quit!
@@ -40,6 +65,18 @@ pub fn plaintext_from_link(link: &str) -> (String, String) {
 
     let raw_text = get_article(format!("https://{wikipedia_url}/w/api.php?action=query&format=json&prop=revisions&titles={url_title}&formatversion=2&rvprop=content&rvslots=*")).unwrap();
 
+    // Trimming out the references
+    let re = Regex::new(r"<ref>.*?</ref>").unwrap();
+    let raw_text = re.replace_all(&raw_text, "").to_string();
+
+    // Trimming out reference for now
+    let raw_text = regex::Regex::new(r"== References ==.*")
+        .unwrap()
+        .replace(&raw_text, "")
+        .to_string();
+
+    // Trimming out the squigglies
+    let raw_text = remove_nested_braces(&raw_text);
     // Trimming out infobox
     let mut characters: Vec<char> = raw_text.find("\"").map_or_else(
         || raw_text.chars().collect(),
@@ -53,14 +90,14 @@ pub fn plaintext_from_link(link: &str) -> (String, String) {
     (plaintext, url_title.to_string())
 }
 
-fn parse_text(characters: &Vec<char>) -> Result<Vec<Token>, String> {
+fn parse_text(characters: &Vec<char>) -> Option<Vec<Token>> {
     let mut start: usize;
     let mut current = 0;
     let mut tokens: Vec<Token> = Vec::new();
     let mut is_bullet = false;
+    // const MAX_ITERATIONS = 1000000;
+    println!("Charatcers: {}", characters.len());
 
-    // Removing the Infobox stuff (let's call it "Prelude")
-    // Assumption: the first word is always bold
     while current < characters.len() {
         match characters[current] {
             '{' => {
@@ -203,7 +240,7 @@ fn parse_text(characters: &Vec<char>) -> Result<Vec<Token>, String> {
         }
     }
 
-    Ok(tokens)
+    Some(tokens)
 }
 
 fn get_article(url: String) -> Result<String, String> {

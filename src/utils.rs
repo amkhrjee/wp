@@ -122,7 +122,7 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-pub fn download_from_file(link: &str) {
+pub fn download_from_file(link: &str) -> Option<bool> {
     use indicatif::ProgressBar;
     let mut list_of_links = vec![];
     if let Ok(lines) = read_lines(link) {
@@ -156,4 +156,5 @@ pub fn download_from_file(link: &str) {
     bar.lock().unwrap().finish_and_clear();
 
     println!("\n✅ Download complete.");
+    Some(true)
 }

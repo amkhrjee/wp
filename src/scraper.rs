@@ -86,7 +86,6 @@ pub fn bulk_download_or_save_links(
     println!("⚡ Scraping links...");
 
     let mut next_batch_link = start_url.to_string();
-
     loop {
         let response = client.get(&next_batch_link).send()?;
         let html = response.text()?;
@@ -98,19 +97,18 @@ pub fn bulk_download_or_save_links(
         let nav_selector = Selector::parse("div.mw-allpages-nav").unwrap();
         let a_selector = Selector::parse("a[href]").unwrap();
 
-        next_batch_link = parsed_html
+        if let Some(next_link) = parsed_html
             .select(&nav_selector)
             .nth(1)
             .and_then(|div| div.select(&a_selector).nth(1))
             .and_then(|a| a.value().attr("href"))
             .map(|link| format!("https://{}{}", main_url, link))
-            .ok_or("No next batch link found")?;
-
-        if next_batch_link.is_empty() {
+        {
+            next_batch_link = next_link;
+        } else {
             break;
         }
     }
-
     println!("✅ All links saved.");
 
     if is_links_only {
@@ -148,7 +146,10 @@ pub fn bulk_download_or_save_links(
             .collect();
         for each_file in files {
             let file_path = each_file.path();
-            download_from_file(file_path.to_str().unwrap())
+            match download_from_file(file_path.to_str().unwrap()) {
+                Some(_) => continue,
+                None => continue,
+            }
         }
     }
 
